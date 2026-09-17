@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-
+// Add description for the PriceHisotry 
 type Range = "7D" | "30D" | "1Y";
 
 export default function PriceHistoryChart({ product }: any) {
@@ -81,3 +81,4 @@ export default function PriceHistoryChart({ product }: any) {
     </div>
   );
 }
+
