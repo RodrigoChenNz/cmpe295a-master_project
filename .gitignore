@@ -1,8 +1,51 @@
-venv/
-.env/
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.so
 .venv/
+venv/
+venv*/
 env/
 ENV/
+.python-version.local
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# ---- Node ----
+node_modules/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# ---- Secrets / local config ----
 .env*
-venv*/
 !.env.example
+
+# ---- Data / models / notebooks ----
+*.db
+*.sqlite3
+.ipynb_checkpoints/
+notebooks/**/outputs/
+data/raw/
+data/interim/
+models/*.pt
+models/*.pkl
+mlruns/
+
+# ---- Editor / OS ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# ---- Embedded toolchain ----
+edge/msp432/Debug/
+edge/msp432/Release/
+*.out
+*.map
