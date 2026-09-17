@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sjsu.edu/cmpe295/contracts/guardrail.schema.json",
+  "title": "Guardrail",
+  "description": "PROPOSED — needs sign-off from the pricing-agent owner before anything is built against it. Published by dashboard-api to retail/guardrail/{product_id} when a manager changes the allowed price band for a SKU. QoS 1, retained. This is the human-override path: the RL agent must clamp its action to this band, which is what makes the system deployable rather than a demo.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["product_id", "min_price", "max_price", "set_by", "ts"],
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "pattern": "^SKU-[0-9]{3,}$"
+    },
+    "min_price": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01,
+      "description": "Floor. The agent must never publish a price below this."
+    },
+    "max_price": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01,
+      "description": "Ceiling. The agent must never publish a price above this. Must be >= min_price; the API rejects the request otherwise."
+    },
+    "set_by": {
+      "type": "string",
+      "description": "Username of the manager who set the band. Feeds the audit log."
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "examples": [
+    {
+      "product_id": "SKU-001",
+      "min_price": 9.99,
+      "max_price": 15.99,
+      "set_by": "rchen",
+      "ts": "2026-09-17T10:00:00Z"
+    }
+  ]
+}
