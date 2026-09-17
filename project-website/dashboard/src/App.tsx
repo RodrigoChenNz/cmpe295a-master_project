@@ -4,6 +4,12 @@ import DashboardPage from "./pages/DashboardPage";
 import ProductsPage from "./pages/ProductsPage";
 import { products as mockProducts } from "./data/mockData";
 
+// think of the End User isntead of focusing on manager --> RBAC (target end users that allows them view the store ingventory, and alsoo see the competitor prices, and 
+// also provide them capability to make reservation/purchase online (anywhere as long conencted to the Internet)
+// Maybe do an APP for mobile? this will be much more accessible to the end users (faciliate whatever you can for the end users)
+// Add location? depending where the user is and find the optimal path (travel time and cost in mind)
+// Add niche products (category for local products)
+
 export default function App() {
   const [products, setProducts] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
