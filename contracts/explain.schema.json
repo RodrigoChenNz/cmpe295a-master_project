@@ -18,13 +18,13 @@
     },
     "base_value": {
       "type": "number",
-      "description": "SHAP expected value: the model output before any feature contribution. base_value + sum(shap[].value) equals the decided price."
+      "description": "SHAP expected value: the model output before any feature contribution. base_value + sum(shap[].value) equals the decided price, to within half a cent."
     },
     "shap": {
       "type": "array",
       "minItems": 1,
       "maxItems": 20,
-      "description": "Signed feature contributions, sorted by absolute value descending.",
+      "description": "Signed feature contributions, sorted by absolute value descending. The vector must be COMPLETE, not a truncated top-N: a model with more than 20 features aggregates its tail into a single entry named 'other_factors' rather than dropping it, so additivity always holds. A consumer that receives a non-additive vector must surface the unexplained remainder rather than hide it — silently folding it away would defeat the audit claim this project rests on.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -53,9 +53,10 @@
       "decision_id": "9f2c4d1e-6b7a-4c3d-8e9f-0a1b2c3d4e5f",
       "base_value": 12.5,
       "shap": [
-        { "feature": "inventory_level", "value": -0.05 },
-        { "feature": "competitor_price", "value": 0.02 },
-        { "feature": "day_of_week", "value": 0.02 }
+        { "feature": "competitor_price", "value": 0.62 },
+        { "feature": "inventory_level", "value": -0.41 },
+        { "feature": "day_of_week", "value": 0.18 },
+        { "feature": "time_of_day", "value": 0.1 }
       ],
       "ts": "2026-09-17T10:00:02Z"
     }

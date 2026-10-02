@@ -1,0 +1,311 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.count {
+  margin-left: auto;
+  font-size: var(--fs-body);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* ── Bulk bar ─────────────────────────────────────────────────────────── */
+
+.bulk {
+  background: #e9e4d4;
+  border: 1px solid #cec7b3;
+  border-radius: var(--r);
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.bulkCount {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink-body);
+  white-space: nowrap;
+}
+.bulkNote {
+  font-size: var(--fs-body);
+  color: var(--ink-2);
+}
+.bulkActions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* Rejecting in bulk is destructive-ish but reversible (nothing is published),
+ * so it reads as a warning rather than a danger button. */
+.bulkReject {
+  background: var(--surface);
+  color: var(--red);
+  border: 1px solid var(--red-border-soft);
+}
+.bulkReject:hover:not(:disabled) {
+  background: var(--red-surface);
+  filter: none;
+}
+
+.readOnly {
+  margin: 0;
+  padding: 11px 14px;
+  background: var(--subtle);
+  border: 1px solid var(--divider);
+  border-radius: var(--r);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+/* ── Table ────────────────────────────────────────────────────────────── */
+
+.tableCard {
+  overflow: hidden;
+}
+
+/* Horizontal scroll only; the page itself scrolls vertically. The queue is
+ * short by design — if it is long enough to need its own scroll container,
+ * the real problem is the queue. */
+.scroller {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 1180px;
+  border-collapse: collapse;
+}
+
+.th,
+.thCheck,
+.thActions {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-card);
+  padding: 11px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-label);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-align: left;
+  white-space: nowrap;
+}
+.thCheck {
+  width: 44px;
+  padding: 11px 0 11px 18px;
+}
+.thActions {
+  width: 110px;
+  padding: 11px 18px 11px 12px;
+}
+.right {
+  text-align: right;
+}
+
+.table tbody tr:hover {
+  background: var(--row-hover);
+}
+.table tbody tr[data-selected] {
+  background: var(--row-selected);
+}
+
+.td,
+.tdCheck,
+.tdActions {
+  border-bottom: 1px solid var(--divider);
+  padding: 13px 12px;
+  vertical-align: top;
+}
+.table tbody tr:last-child .td,
+.table tbody tr:last-child .tdCheck,
+.table tbody tr:last-child .tdActions {
+  border-bottom: none;
+}
+.tdCheck {
+  padding: 13px 0 13px 18px;
+  width: 44px;
+}
+.tdActions {
+  padding: 13px 18px 13px 12px;
+}
+/* Clicking a row opens the detail; the checkbox and the action buttons are in
+ * cells without this cursor, and stop the click by being buttons. */
+.td {
+  cursor: pointer;
+}
+
+.product {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.productName {
+  font-size: var(--fs-card);
+  font-weight: 600;
+}
+.productMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sku {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+
+.current {
+  font-size: var(--fs-card);
+  color: var(--ink-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.suggested {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pct {
+  display: block;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Green for a markdown, per the handoff. Not "good" vs "bad" — a cut is simply
+ * the direction the agent proposes most often, and the colour distinguishes it
+ * at a glance in a column of signed numbers. */
+.pct[data-dir='down'] { color: var(--green); }
+.pct[data-dir='up']   { color: var(--ink-body); }
+
+.outOfBand {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 6px;
+  background: var(--amber-tint);
+  color: var(--amber-text);
+  border-radius: var(--r);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.why {
+  max-width: 320px;
+}
+.whyText {
+  display: block;
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  color: var(--ink-body);
+  text-wrap: pretty;
+}
+/* Says where the words came from. The agent contract has no prose field, so a
+ * composed sentence is marked as composed rather than passed off as the
+ * agent's own reasoning. */
+.whyComposed {
+  display: block;
+  margin-top: 4px;
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--disabled);
+  cursor: help;
+}
+.noExplanation {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--amber-text);
+}
+
+.lapses {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* ── Row actions ──────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.reject,
+.approve {
+  width: 31px;
+  height: 31px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r);
+  cursor: pointer;
+  /* No transform, no width change: the hover-expand was tried and removed. */
+  transition: background-color 120ms ease, opacity 120ms ease;
+}
+.reject {
+  background: var(--surface);
+  color: var(--ink-body);
+  border: 1px solid var(--border-input);
+}
+.reject:hover:not(:disabled) {
+  background: var(--hover);
+}
+.approve {
+  background: var(--ac);
+  color: var(--surface);
+  border: 1px solid transparent;
+}
+.approve:hover:not(:disabled) {
+  opacity: 0.88;
+}
+.reject:disabled,
+.approve:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rowSpinner {
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.foot {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  max-width: 76ch;
+}
+
+/* ── Margin note, shared with the detail screen ───────────────────────── */
+
+.marginOk {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.marginBad {
+  font-weight: 600;
+  color: var(--red);
+}

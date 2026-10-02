@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sjsu.edu/cmpe295/contracts/proposal.schema.json",
+  "title": "PriceProposal",
+  "description": "Published by the pricing agent to retail/proposal/{product_id}. QoS 1, NOT retained — a stale proposal reasoning about last week's market is worse than no proposal. This is a RECOMMENDATION, not a decision: the agent never publishes to retail/price. The dashboard evaluates each proposal against the product's policy and either auto-applies it or queues it for a human. Nothing reaches the shelf without passing through that gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["product_id", "proposed_price", "current_price", "currency", "decision_id", "reason_tag", "agent_version", "expires_at", "ts"],
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "pattern": "^SKU-[0-9]{3,}$"
+    },
+    "proposed_price": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01,
+      "description": "What the agent recommends. Not live until approved."
+    },
+    "current_price": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01,
+      "description": "The approved price currently on the shelf, as the agent understood it when deciding. Lets the dashboard render the delta and evaluate the auto-approve threshold without a second lookup."
+    },
+    "currency": {
+      "type": "string",
+      "enum": ["USD"]
+    },
+    "decision_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Join key. The matching ExplainVector carries the same decision_id, and it survives onto the published price if the proposal is approved."
+    },
+    "reason_tag": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16,
+      "description": "Human-readable headline reason. Renders verbatim on LCD line 2 of a 16x2 display IF this proposal is approved, so the 16 character limit is a hardware constraint."
+    },
+    "agent_version": {
+      "type": "string",
+      "description": "Which policy produced the recommendation, e.g. 'stub-0.1' or 'dqn-2026-10-03'. Required so approval rates can be attributed per agent version — that ratio is an evaluation result."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "After this instant an undecided proposal lapses and the shelf keeps its approved price. Required, not optional: an agent that cannot say how long its reasoning holds has not finished reasoning."
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "examples": [
+    {
+      "product_id": "SKU-001",
+      "proposed_price": 12.99,
+      "current_price": 12.5,
+      "currency": "USD",
+      "decision_id": "9f2c4d1e-6b7a-4c3d-8e9f-0a1b2c3d4e5f",
+      "reason_tag": "Competitor up",
+      "agent_version": "stub-0.1",
+      "expires_at": "2026-09-17T14:00:00Z",
+      "ts": "2026-09-17T10:00:00Z"
+    }
+  ]
+}

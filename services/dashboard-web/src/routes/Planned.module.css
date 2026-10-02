@@ -1,0 +1,121 @@
+.wrap {
+  max-width: 880px;
+}
+
+.card {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tag {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber-text);
+  background: var(--amber-tint);
+  border: 1px solid #e6d7b0;
+  border-radius: var(--r);
+  padding: 3px 8px;
+}
+
+.title {
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-strong);
+  max-width: 70ch;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  padding: 18px 0 4px;
+  border-top: 1px solid var(--divider);
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.colTitle {
+  font-size: var(--fs-body);
+  color: var(--ink-strong);
+}
+
+.list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.monoList {
+  list-style: none;
+  padding-left: 0;
+}
+.monoList li {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-body);
+  background: var(--subtle);
+  border: 1px solid var(--divider);
+  border-radius: var(--r);
+  padding: 5px 8px;
+  overflow-wrap: anywhere;
+}
+
+.apiNote {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.instead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--divider);
+}
+.insteadText {
+  margin: 0;
+  flex: 1 1 320px;
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.insteadLink {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ac);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .card {
+    padding: 18px;
+  }
+}

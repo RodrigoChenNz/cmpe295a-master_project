@@ -44,7 +44,12 @@ services:
     ports:
       - "5432:5432"
     volumes:
+      # Applied in filename order on first start of an empty volume.
+      # 01 mirrors contracts/ and needs all four approvals to change.
+      # 02 and 03 are console-side only; see their headers.
       - ./postgres/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./postgres/02-shelfiq.sql:/docker-entrypoint-initdb.d/02-shelfiq.sql:ro
+      - ./postgres/03-seed.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
@@ -53,29 +58,53 @@ services:
       timeout: 5s
       retries: 5
 
-  # dashboard-api:
-  #   build: ../services/dashboard-api
-  #   container_name: rp-api
-  #   environment:
-  #     MQTT_HOST: mosquitto
-  #     MQTT_PORT: 1883
-  #     DATABASE_URL: postgresql://retail:retail_dev_only@postgres:5432/retail_pricing
-  #   ports:
-  #     - "8000:8000"
-  #   depends_on:
-  #     mosquitto: { condition: service_healthy }
-  #     postgres:  { condition: service_healthy }
+  dashboard-api:
+    build: ../services/dashboard-api
+    container_name: rp-api
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      DATABASE_URL: postgresql://retail:retail_dev_only@postgres:5432/retail_pricing
+      # The console's sign-in needs one account that can actually sign in, and
+      # the seed ships every user with an unusable password hash so that no
+      # committed file in this repo holds a working credential. This turns one
+      # of them into a real account on startup. Override both in .env.
+      SHELFIQ_BOOTSTRAP_USER: ${SHELFIQ_BOOTSTRAP_USER:-rchen}
+      SHELFIQ_BOOTSTRAP_PASSWORD: ${SHELFIQ_BOOTSTRAP_PASSWORD:-}
+      CORS_ORIGINS: http://localhost:5173
+      # Plain http locally. Any deployment must set this true.
+      SESSION_COOKIE_SECURE: "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      mosquitto: { condition: service_healthy }
+      postgres:  { condition: service_healthy }
+    restart: unless-stopped
 
-  # dashboard-web:
-  #   build: ../services/dashboard-web
-  #   container_name: rp-web
-  #   environment:
-  #     VITE_API_URL: http://localhost:8000
-  #     VITE_WS_URL: ws://localhost:8000/ws/stream
-  #   ports:
-  #     - "5173:5173"
-  #   depends_on:
-  #     - dashboard-api
+  dashboard-web:
+    build: ../services/dashboard-web
+    container_name: rp-web
+    environment:
+      # The browser resolves these, not the container, so they are localhost
+      # even though the API is reachable as `dashboard-api` on this network.
+      VITE_API_URL: http://localhost:8000
+      VITE_WS_URL: ws://localhost:8000/ws/stream
+    volumes:
+      # The source, bind-mounted, so the dev server actually hot reloads. The
+      # image COPYs src too, which is what makes it runnable standalone — but
+      # without this mount every edit needs a rebuild, and a container running
+      # a dev server against a frozen copy of the code is the worst of both.
+      - ../services/dashboard-web/src:/srv/src:ro
+      - ../services/dashboard-web/index.html:/srv/index.html:ro
+      - ../services/dashboard-web/public:/srv/public:ro
+      # Anonymous volume so the container keeps its own node_modules: the host
+      # may have none, or have them built for a different platform.
+      - /srv/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - dashboard-api
+    restart: unless-stopped
 
 volumes:
   mosquitto-data:

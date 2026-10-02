@@ -1,0 +1,670 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 236px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.rightCol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Views & filters panel ────────────────────────────────────────────── */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Sticks alongside a long table rather than scrolling away from it. */
+  position: sticky;
+  top: calc(var(--header-h) + 24px);
+  max-height: calc(100vh - var(--header-h) - 48px);
+  overflow-y: auto;
+}
+
+.panelTitle {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--divider);
+  font-size: var(--fs-card);
+  font-weight: 600;
+  color: var(--ink);
+  flex: none;
+}
+
+.savedViews {
+  padding: 12px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--divider);
+}
+.savedViews > :global(.monoLabel) {
+  padding: 0 6px 6px;
+}
+
+.savedView {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--r);
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.savedView:hover {
+  background: var(--hover);
+}
+.savedView[data-active] {
+  background: var(--hover);
+  font-weight: 600;
+}
+.savedCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.section {
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  user-select: none;
+  width: 100%;
+}
+
+.caret {
+  font-size: 10px;
+  color: var(--ink-muted);
+  transition: transform 150ms ease;
+}
+.caret[data-closed] {
+  transform: rotate(-90deg);
+}
+
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.catSearch {
+  height: 30px;
+  margin: 2px 0 4px;
+  font-size: 12.5px;
+  border-color: var(--border-card);
+}
+
+.allRow,
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 29px;
+  font-size: var(--fs-body);
+  color: var(--ink-strong);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+/* The "All" row has no checkbox, so its label is indented to the column the
+ * other labels start at. Otherwise the list looks ragged. */
+.allRow {
+  padding-left: 24px;
+}
+.allRow[data-active] .filterLabel {
+  font-weight: 600;
+}
+
+.filterDot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+}
+.filterDot[data-tone='green'] { background: var(--green); }
+.filterDot[data-tone='amber'] { background: var(--amber); }
+.filterDot[data-tone='red']   { background: var(--red); }
+
+.filterLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.filterCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.noMatch {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  padding: 4px 0;
+}
+
+.panelFoot {
+  padding: 12px 16px 14px;
+  flex: none;
+}
+.clearAll {
+  width: 100%;
+  height: 34px;
+  font-size: 10.5px;
+  border-color: var(--border-card);
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────────
+ * Sticky under the header. The negative margins and matching padding mean rows
+ * scroll under a band of the page colour rather than appearing out of a gap. */
+
+.toolbar {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 25;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: calc(var(--page-pad) * -1) 0 -12px;
+  padding: var(--page-pad) 0 12px;
+  background: var(--page);
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  margin-left: auto;
+}
+
+.plus {
+  font-size: 15px;
+  line-height: 1;
+  margin-right: 2px;
+}
+
+.segmented {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  background: var(--hover);
+  border: 1px solid var(--divider);
+  border-radius: var(--r);
+}
+.segment {
+  width: 32px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--r);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.segment[data-active] {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* ── Table ────────────────────────────────────────────────────────────── */
+
+.tableCard {
+  overflow: clip;
+}
+
+/* Scrolls in both directions, per the handoff, with sticky headings inside. */
+.scroller {
+  width: 100%;
+  overflow: auto;
+  max-height: calc(100vh - 230px);
+}
+
+.table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.th,
+.thCheck,
+.thMenu {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-card);
+  padding: 11px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-label);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-align: left;
+  white-space: nowrap;
+}
+.thCheck {
+  width: 42px;
+  padding: 11px 0 11px 18px;
+}
+.thMenu {
+  width: 44px;
+  padding: 11px 14px 11px 0;
+}
+.right {
+  text-align: right;
+}
+
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+  user-select: none;
+}
+.sortBtn:hover,
+.sortBtn[data-active] {
+  color: var(--ink);
+}
+.right .sortBtn {
+  flex-direction: row-reverse;
+}
+
+.sortArrow {
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.35;
+}
+.sortArrow[data-active] {
+  opacity: 1;
+}
+
+.table tbody tr:hover {
+  background: var(--row-hover);
+}
+.table tbody tr[data-selected] {
+  background: var(--row-selected);
+}
+
+.td,
+.tdCheck,
+.tdMenu {
+  border-bottom: 1px solid var(--divider);
+  padding: 8px 12px;
+}
+.td {
+  cursor: pointer;
+}
+.tdCheck {
+  padding: 8px 0 8px 18px;
+}
+.tdMenu {
+  padding: 8px 14px 8px 0;
+  text-align: right;
+}
+
+.productCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.productName {
+  font-size: var(--fs-card);
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Something is waiting on a human for this product. A dot rather than a badge,
+ * because the Price suggestions screen is where the count belongs. */
+.reviewDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  flex: none;
+}
+
+.photo {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--photo-slot);
+  border-radius: var(--r);
+  object-fit: cover;
+  overflow: hidden;
+}
+.photoInitial {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--disabled);
+}
+
+.skuCell,
+.supplierCell {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.skuCell {
+  font-family: var(--font-mono);
+}
+.supplierCell {
+  font-size: var(--fs-body);
+}
+
+.priceCell {
+  font-size: var(--fs-card);
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.noLabel {
+  font-size: var(--fs-xs);
+  color: var(--disabled);
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────── */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 14px;
+}
+
+.productCard {
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--rl);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-width: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 120ms ease;
+}
+.productCard:hover {
+  border-color: var(--ink-muted);
+}
+.productCard[data-selected] {
+  border-color: var(--ink);
+  background: var(--row-selected);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.cardHeadText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.cardName {
+  font-size: var(--fs-card);
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+.cardSku {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.cardPrices {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cardStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cardStatEnd {
+  align-items: flex-end;
+}
+.cardPrice {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.cardStock {
+  font-size: var(--fs-card);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.cardStock[data-low] {
+  color: var(--red);
+}
+
+.cardRows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 11px;
+  border-top: 1px solid var(--divider);
+}
+.cardRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cardRowValue {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  text-align: right;
+  min-width: 0;
+}
+
+.cardsPagination {
+  overflow: hidden;
+}
+
+/* ── Floating island ──────────────────────────────────────────────────────
+ * Fixed and centred over the main area, offset by the nav width so it is
+ * centred on the content rather than on the window. */
+
+.island {
+  position: fixed;
+  bottom: 24px;
+  left: calc(var(--nav-w) + (100vw - var(--nav-w)) / 2);
+  transform: translateX(-50%);
+  z-index: 70;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 18px;
+  background: var(--nav-bg);
+  border-radius: 24px;
+  box-shadow: var(--shadow-island);
+  animation: islandIn var(--t-island) var(--ease-in-island);
+}
+/* The nav is collapsed at this width, so the island's offset has to follow. */
+@media (max-width: 1100px) {
+  .island {
+    left: calc(var(--nav-w-collapsed) + (100vw - var(--nav-w-collapsed)) / 2);
+  }
+}
+
+.islandCount {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--subtle);
+  white-space: nowrap;
+}
+
+.islandClear {
+  background: transparent;
+  border: none;
+  padding: 0 4px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  color: var(--nav-collapse);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.islandClear:hover {
+  color: var(--subtle);
+}
+
+.islandRule {
+  width: 1px;
+  height: 22px;
+  background: var(--nav-divider);
+  margin: 0 4px;
+  flex: none;
+}
+
+.islandBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 11px;
+  background: #2e2b20;
+  border: 1px solid #3a372c;
+  border-radius: var(--r);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--subtle);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.islandBtn:hover:not(:disabled) {
+  background: #3f3b2d;
+}
+.islandBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* The island's own ⋯ menu sits on the dark plane, so it needs the light
+ * surface of a normal menu rather than inheriting the island's colours. */
+.island :global(button) {
+  color: var(--subtle);
+}
+
+.islandMsg {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 10px;
+  font-size: var(--fs-body);
+  color: var(--subtle);
+  white-space: nowrap;
+}
+.islandDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5fc98c;
+  flex: none;
+}
+
+.modalP {
+  margin: 0 0 12px;
+}
+.modalP:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Narrow ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .panel {
+    position: static;
+    max-height: none;
+  }
+  .scroller {
+    max-height: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .toolbar {
+    margin: -16px 0 -12px;
+    padding: 16px 0 12px;
+  }
+  .toolbarRight {
+    margin-left: 0;
+  }
+  .island {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    height: auto;
+    padding: 10px 12px;
+    border-radius: var(--rl);
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,803 @@
+/* The shell.
+ *
+ * The collapsed/expanded nav is driven by one attribute on the root —
+ * `[data-nav="closed"]` — rather than a class on each affected element. That
+ * keeps the animation in one place and means a new nav item cannot forget to
+ * collapse.
+ */
+
+.shell {
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+  background: var(--page);
+}
+
+/* ── Side nav ─────────────────────────────────────────────────────────── */
+
+.nav {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  flex: none;
+  width: var(--nav-w);
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 20px 0;
+  background: var(--nav-bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 40;
+  /* The 60ms delay lets the labels start fading before the width moves, so the
+   * text does not appear to squeeze. */
+  transition: width var(--t-nav) var(--ease) 60ms;
+}
+.shell[data-nav='closed'] .nav {
+  width: var(--nav-w-collapsed);
+}
+
+/* Scrolls internally when the window is short; the pinned bottom block never
+ * does, so Settings and the account row are always reachable. */
+.navTop {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.navBottom {
+  flex: none;
+  padding: 8px 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navRule {
+  height: 1px;
+  background: var(--nav-divider);
+  margin: 8px 10px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 15px;
+  min-height: 26px;
+  text-decoration: none;
+  transition: padding var(--t-nav) var(--ease), gap var(--t-nav) var(--ease);
+}
+.brand:hover {
+  text-decoration: none;
+}
+.shell[data-nav='closed'] .brand {
+  padding: 0 22px;
+  gap: 0;
+}
+
+.brandMark {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r);
+  background: var(--page);
+  flex: none;
+}
+.brandText {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--nav-fg);
+}
+
+.navGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 10px;
+  overflow: hidden;
+}
+
+.navSpacer {
+  height: 14px;
+}
+
+.navHeading {
+  padding: 0 10px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--nav-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  max-height: 20px;
+  transition: opacity var(--t-label) ease, max-height var(--t-nav) var(--ease);
+}
+/* Collapsed, the group headings are unreadable at 64px, so they go away rather
+ * than truncate into nonsense. The dividers above each group survive and keep
+ * the grouping legible. */
+.shell[data-nav='closed'] .navHeading {
+  opacity: 0;
+  max-height: 0;
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--r);
+  color: var(--nav-muted);
+  font-size: var(--fs-card);
+  text-decoration: none;
+  flex: none;
+}
+.navItem:hover {
+  background: var(--nav-hover);
+  color: var(--nav-fg);
+  text-decoration: none;
+}
+.navItemActive {
+  background: var(--nav-hover);
+  color: var(--nav-fg);
+  font-weight: 600;
+}
+/* A left marker as well as the background fill, so the active item is
+ * identifiable when the nav is collapsed to icons. */
+.navItemActive::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--page);
+}
+
+/* The icon is a mask, not an <img>, so it takes its colour from the item's
+ * state instead of needing a second asset for the active variant. */
+.navIcon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / 18px 18px no-repeat;
+  mask: var(--icon) center / 18px 18px no-repeat;
+}
+
+.navLabel,
+.acctText {
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 160px;
+  opacity: 1;
+  transition: opacity var(--t-label) ease, max-width var(--t-nav) var(--ease);
+}
+.shell[data-nav='closed'] .navLabel,
+.shell[data-nav='closed'] .acctText,
+.shell[data-nav='closed'] .brandText,
+.shell[data-nav='closed'] .acctCaret {
+  opacity: 0;
+  max-width: 0;
+  /* Hidden labels must not be click targets, or the collapsed nav has
+   * invisible hit areas. */
+  pointer-events: none;
+}
+
+.navBadge {
+  margin-left: auto;
+  min-width: 22px;
+  padding: 0 6px;
+  height: 19px;
+  border-radius: var(--r);
+  background: var(--page);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 19px;
+  text-align: center;
+  flex: none;
+  transition: opacity var(--t-label) ease, max-width var(--t-nav) var(--ease);
+  max-width: 60px;
+  overflow: hidden;
+}
+.navDot {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r);
+  background: var(--page);
+  opacity: 0;
+  transition: opacity var(--t-label) ease;
+}
+.shell[data-nav='closed'] .navBadge {
+  opacity: 0;
+  max-width: 0;
+  padding: 0;
+  min-width: 0;
+}
+.shell[data-nav='closed'] .navDot {
+  opacity: 1;
+}
+
+/* ── Account row ──────────────────────────────────────────────────────── */
+
+.acctWrap {
+  position: relative;
+}
+
+.acct {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 44px;
+  padding: 0 5px;
+  border: none;
+  border-radius: var(--r);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.acct:hover {
+  background: var(--nav-hover);
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--page);
+  border-radius: var(--r);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.acctText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.acctName {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--nav-fg);
+  white-space: nowrap;
+}
+.acctRole {
+  font-size: 11.5px;
+  color: var(--nav-muted);
+  white-space: nowrap;
+}
+.acctCaret {
+  flex: none;
+  font-size: 9px;
+  color: var(--nav-muted);
+}
+
+/* Opens upward, because the account row is pinned to the bottom. */
+.acctMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  width: 212px;
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--rl);
+  overflow: hidden;
+  box-shadow: var(--shadow-acct);
+}
+/* Collapsed, there is no room to the left, so it opens to the right of the
+ * avatar instead of off the edge of the screen. */
+.shell[data-nav='closed'] .acctMenu {
+  left: calc(var(--nav-w-collapsed) - 14px);
+  bottom: 0;
+}
+
+.acctMenuHead {
+  padding: 12px 13px;
+  border-bottom: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.acctMenuName {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink);
+}
+.acctMenuEmail {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.acctItem {
+  display: block;
+  width: 100%;
+  padding: 10px 13px;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--divider);
+  cursor: pointer;
+  text-decoration: none;
+}
+.acctItem:first-of-type {
+  border-top: none;
+}
+.acctItem:hover {
+  background: var(--hover);
+  text-decoration: none;
+}
+.acctItem[data-destructive] {
+  color: var(--red);
+}
+
+.collapse {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--nav-collapse);
+  font-size: var(--fs-card);
+  cursor: pointer;
+  text-align: left;
+}
+.collapse:hover {
+  background: var(--nav-hover);
+}
+.collapseIcon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: transform 220ms var(--ease);
+}
+.shell[data-nav='closed'] .collapseIcon {
+  transform: rotate(180deg);
+}
+
+/* ── Main column ──────────────────────────────────────────────────────── */
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header and banners move as one sticky block, so the Products toolbar's
+ * `top: var(--header-h)` has a stable thing to sit under. */
+.stickyTop {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.header {
+  position: relative;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-card);
+  padding: 16px 24px;
+  min-height: var(--header-h);
+  box-sizing: border-box;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.headerInner {
+  width: 100%;
+  max-width: var(--content-max);
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+.crumb:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.title {
+  font-size: var(--fs-title);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.headerDivider {
+  width: 1px;
+  height: 26px;
+  background: var(--divider);
+  flex: none;
+  margin: 0 4px;
+}
+
+.store {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-small);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.storeName {
+  font-weight: 600;
+  color: var(--ink);
+}
+.storeSep {
+  color: var(--border-input);
+}
+.clock {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Banners ──────────────────────────────────────────────────────────── */
+
+.brokerBanner {
+  background: var(--red-surface);
+  border-bottom: 1px solid var(--red-border);
+  padding: 11px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.brokerDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  flex: none;
+}
+.brokerText {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--red-deep);
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.brokerCount {
+  font-size: var(--fs-body);
+  color: var(--red);
+  white-space: nowrap;
+}
+.brokerActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brokerError {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--red);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sampleBanner {
+  background: var(--amber-tint);
+  border-bottom: 1px solid #e6d7b0;
+  padding: 9px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sampleTag {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber-text);
+  border: 1px solid #ddc893;
+  border-radius: var(--r);
+  padding: 2px 7px;
+}
+.sampleText {
+  flex: 1;
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--amber-text);
+  min-width: 0;
+}
+.sampleClose {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--r);
+  color: var(--amber-text);
+  cursor: pointer;
+}
+.sampleClose:hover {
+  background: #ecd9ab;
+}
+
+/* ── Bell ─────────────────────────────────────────────────────────────── */
+
+.bellWrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.bell {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-card);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.bell:hover {
+  background: var(--hover);
+}
+
+.bellCount {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bellPanel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  width: 330px;
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--rl);
+  overflow: hidden;
+  box-shadow: var(--shadow-menu);
+}
+.bellHead {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--divider);
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+.bellEmpty {
+  padding: 16px 14px;
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.bellItem {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 11px 14px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hover);
+  cursor: pointer;
+}
+.bellItem:last-child {
+  border-bottom: none;
+}
+.bellItem:hover {
+  background: var(--hover);
+}
+.bellItemDot {
+  flex: none;
+  margin-top: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.bellItemDot[data-tone='bad']  { background: var(--red); }
+.bellItemDot[data-tone='wait'] { background: var(--amber); }
+.bellItemDot[data-tone='none'] { background: var(--disabled); }
+.bellItemText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bellItemTitle {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink);
+}
+.bellItemDetail {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+/* ── Page frame ───────────────────────────────────────────────────────── */
+
+.page {
+  width: 100%;
+  max-width: var(--page-max);
+  box-sizing: border-box;
+  padding: var(--page-pad) var(--page-pad) 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Toasts ───────────────────────────────────────────────────────────── */
+
+.toasts {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 420px;
+  padding: 11px 15px;
+  background: var(--nav-bg);
+  color: var(--nav-fg);
+  border-radius: var(--rl);
+  box-shadow: var(--shadow-island);
+  font-size: var(--fs-body);
+  animation: islandIn var(--t-island) var(--ease-in-island);
+}
+.toastDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+.toastDot[data-tone='ok']  { background: #5fc98c; }
+.toastDot[data-tone='bad'] { background: #e8775f; }
+
+/* ── Narrow windows ───────────────────────────────────────────────────────
+ * The nav collapses to icons rather than becoming a drawer: a store manager on
+ * a laptop at 1280px still wants the table, and a hamburger would hide the
+ * route they switch between most. */
+@media (max-width: 1100px) {
+  .shell .nav {
+    width: var(--nav-w-collapsed);
+  }
+  .shell .navLabel,
+  .shell .acctText,
+  .shell .brandText,
+  .shell .acctCaret,
+  .shell .navBadge {
+    opacity: 0;
+    max-width: 0;
+    pointer-events: none;
+  }
+  .shell .navHeading {
+    opacity: 0;
+    max-height: 0;
+  }
+  .shell .navDot {
+    opacity: 1;
+  }
+  .collapse {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .header {
+    padding: 12px 16px;
+  }
+  .headerInner {
+    flex-wrap: wrap;
+  }
+  .title {
+    font-size: 21px;
+  }
+  .store {
+    display: none;
+  }
+  .page {
+    padding: 16px 16px 48px;
+  }
+  .brokerBanner,
+  .sampleBanner {
+    padding: 10px 16px;
+  }
+}

@@ -1,0 +1,202 @@
+"""Sign-in, sessions and roles.
+
+The project's central claim is that every price change has a name against it.
+That makes authentication load-bearing rather than decorative: `approved_by` in
+price_history and `decided_by` in proposals are taken from the signed-in user
+and from nowhere else. There is no header, query parameter or request body
+field anywhere in this service that can set them.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
+from fastapi import Cookie, Depends, HTTPException, Request, Response, status
+
+from . import db
+from .config import settings
+
+_hasher = PasswordHasher()
+
+# Roles, most privileged first. A role implies every permission of the ones
+# after it, which is why this is an ordered list and not a set.
+ROLE_ORDER = ["manager", "staff", "viewer"]
+
+
+def hash_password(plain: str) -> str:
+    return _hasher.hash(plain)
+
+
+def verify_password(stored_hash: str, plain: str) -> bool:
+    try:
+        return _hasher.verify(stored_hash, plain)
+    except (VerifyMismatchError, InvalidHashError):
+        # '!' is the seed's unusable sentinel and lands here as InvalidHashError.
+        return False
+
+
+async def bootstrap_user() -> None:
+    """Give the configured bootstrap user a real password hash.
+
+    The seed file ships every user with an unusable '!' hash so that no
+    committed file contains a working credential. This turns one of them into
+    an account someone can actually sign in as, using a password that lives
+    only in .env.
+    """
+    user = settings.shelfiq_bootstrap_user
+    password = settings.shelfiq_bootstrap_password
+    if not user or not password:
+        return
+    updated = await db.execute(
+        "UPDATE users SET password_hash = $2, updated_at = now() WHERE username = $1",
+        user,
+        hash_password(password),
+    )
+    # asyncpg returns the command tag, e.g. "UPDATE 1". Compare the count, not
+    # a suffix: "UPDATE 10" ends in "0" too.
+    if updated.rsplit(" ", 1)[-1] == "0":
+        raise RuntimeError(
+            f"SHELFIQ_BOOTSTRAP_USER={user!r} is not a row in the users table. "
+            "Seed the database or pick an existing username."
+        )
+
+
+async def create_session(username: str, user_agent: str | None) -> tuple[str, datetime]:
+    session_id = uuid.uuid4()
+    expires = datetime.now(timezone.utc) + timedelta(hours=settings.session_ttl_hours)
+    await db.execute(
+        """INSERT INTO sessions (session_id, username, expires_at, user_agent)
+           VALUES ($1, $2, $3, $4)""",
+        session_id,
+        username,
+        expires,
+        (user_agent or "")[:300] or None,
+    )
+    await db.execute(
+        "UPDATE users SET last_login_at = now() WHERE username = $1", username
+    )
+    return str(session_id), expires
+
+
+async def destroy_session(session_id: str) -> None:
+    try:
+        sid = uuid.UUID(session_id)
+    except ValueError:
+        return
+    await db.execute("DELETE FROM sessions WHERE session_id = $1", sid)
+
+
+async def purge_expired_sessions() -> None:
+    await db.execute("DELETE FROM sessions WHERE expires_at < now()")
+
+
+def set_session_cookie(response: Response, session_id: str, expires: datetime) -> None:
+    response.set_cookie(
+        settings.session_cookie_name,
+        session_id,
+        httponly=True,
+        secure=settings.session_cookie_secure,
+        samesite="lax",
+        expires=expires,
+        path="/",
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(settings.session_cookie_name, path="/")
+
+
+class CurrentUser:
+    def __init__(self, username: str, full_name: str, role: str, email: str):
+        self.username = username
+        self.full_name = full_name
+        self.role = role
+        self.email = email
+
+    def initials(self) -> str:
+        parts = [p for p in self.full_name.split() if p]
+        if not parts:
+            return self.username[:2].upper()
+        if len(parts) == 1:
+            return parts[0][:2].upper()
+        return (parts[0][0] + parts[-1][0]).upper()
+
+    def as_dict(self) -> dict:
+        return {
+            "username": self.username,
+            "full_name": self.full_name,
+            "role": self.role,
+            "email": self.email,
+            "initials": self.initials(),
+        }
+
+
+async def _lookup(session_id: str | None) -> CurrentUser | None:
+    if not session_id:
+        return None
+    try:
+        sid = uuid.UUID(session_id)
+    except ValueError:
+        return None
+    row = await db.fetchrow(
+        """SELECT u.username, u.full_name, u.role, u.email
+             FROM sessions s
+             JOIN users u ON u.username = s.username
+            WHERE s.session_id = $1
+              AND s.expires_at > now()
+              AND u.is_active""",
+        sid,
+    )
+    if row is None:
+        return None
+    return CurrentUser(row["username"], row["full_name"], row["role"], row["email"])
+
+
+async def current_user(
+    shelfiq_session: Annotated[str | None, Cookie()] = None,
+) -> CurrentUser:
+    user = await _lookup(shelfiq_session)
+    if user is None:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Sign in to continue.",
+        )
+    return user
+
+
+async def optional_user(
+    shelfiq_session: Annotated[str | None, Cookie()] = None,
+) -> CurrentUser | None:
+    return await _lookup(shelfiq_session)
+
+
+async def user_from_request(request: Request) -> CurrentUser | None:
+    """For the WebSocket handler, which has cookies but no dependency wiring."""
+    return await _lookup(request.cookies.get(settings.session_cookie_name))
+
+
+def require_role(*allowed: str):
+    """Dependency factory. `require_role("manager")` also admits nobody else —
+    roles are listed explicitly rather than ranked implicitly, so widening a
+    permission is a visible edit."""
+
+    async def _dep(user: Annotated[CurrentUser, Depends(current_user)]) -> CurrentUser:
+        if user.role not in allowed:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"This action needs the {' or '.join(allowed)} role. "
+                f"You are signed in as {user.role}.",
+            )
+        return user
+
+    return _dep
+
+
+# The two that matter, named where they are used rather than spelled out at
+# each call site.
+require_manager = require_role("manager")
+require_editor = require_role("manager", "staff")

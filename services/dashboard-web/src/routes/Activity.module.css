@@ -1,0 +1,142 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.count {
+  margin-left: auto;
+  font-size: var(--fs-body);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.tableCard {
+  overflow: hidden;
+}
+
+.scroller {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 1180px;
+  border-collapse: collapse;
+}
+
+.th {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border-card);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-label);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-align: left;
+  white-space: nowrap;
+}
+.th:first-child { padding-left: 18px; }
+.th:last-child  { padding-right: 18px; }
+.right { text-align: right; }
+
+.table tbody tr:hover {
+  background: var(--row-hover);
+}
+
+.td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--divider);
+  vertical-align: top;
+  font-size: var(--fs-body);
+}
+.td:first-child { padding-left: 18px; }
+.td:last-child  { padding-right: 18px; }
+.table tbody tr:last-child .td { border-bottom: none; }
+
+.tsCell {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.productLink {
+  font-size: var(--fs-card);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.oldCell {
+  color: var(--ink-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.newCell {
+  font-size: var(--fs-card);
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pct {
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pct[data-dir='down'] { color: var(--green); }
+.pct[data-dir='up']   { color: var(--ink-body); }
+.pct[data-dir='flat'] { color: var(--disabled); }
+
+/* Who decided, then on what basis. Two lines because they are two facts, and
+ * the second is what makes the first auditable. */
+.decision {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.who {
+  font-weight: 600;
+  color: var(--ink-body);
+}
+.basis {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+/* The reason tag goes verbatim onto the shelf label, so it is shown verbatim
+ * here too, in the machine register. */
+.reasonCell {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.labelCell {
+  white-space: nowrap;
+}
+.labelLink {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.foot {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  max-width: 88ch;
+}
+
+@media (max-width: 760px) {
+  .count {
+    margin-left: 0;
+  }
+}
