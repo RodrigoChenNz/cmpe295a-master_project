@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sjsu.edu/cmpe295/contracts/guardrail.schema.json",
-  "title": "Guardrail",
-  "description": "PROPOSED — needs sign-off from the pricing-agent owner before anything is built against it. Published by dashboard-api to retail/guardrail/{product_id} when a manager changes the allowed price band for a SKU. QoS 1, retained. This is the human-override path: the RL agent must clamp its action to this band, which is what makes the system deployable rather than a demo.",
+  "title": "PricingPolicy",
+  "description": "The manager's standing instructions for one SKU. Published to retail/guardrail/{product_id} by dashboard-api when a manager edits them. QoS 1, retained. This is not merely a clamp — it is the automation policy that decides which agent proposals apply without a human and which wait for one. It is the mechanism by which a manager delegates authority, so it is load-bearing, not advisory.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["product_id", "min_price", "max_price", "set_by", "ts"],
+  "required": ["product_id", "min_price", "max_price", "auto_approve_pct", "set_by", "ts"],
   "properties": {
     "product_id": {
       "type": "string",
@@ -15,17 +15,24 @@
       "type": "number",
       "exclusiveMinimum": 0,
       "multipleOf": 0.01,
-      "description": "Floor. The agent must never publish a price below this."
+      "description": "Floor. A proposal below this is never auto-applied and is flagged as out-of-band in the review queue. The agent should clamp its own proposals to this range."
     },
     "max_price": {
       "type": "number",
       "exclusiveMinimum": 0,
       "multipleOf": 0.01,
-      "description": "Ceiling. The agent must never publish a price above this. Must be >= min_price; the API rejects the request otherwise."
+      "description": "Ceiling. Must be >= min_price; dashboard-api rejects the edit otherwise."
+    },
+    "auto_approve_pct": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Maximum price move, as a percentage of the current price, that may be applied without a human. NULL means always ask — every proposal for this SKU goes to the review queue regardless of size. 0 has the same practical effect but states it as a threshold rather than as a policy choice; prefer NULL for 'always ask'."
     },
     "set_by": {
       "type": "string",
-      "description": "Username of the manager who set the band. Feeds the audit log."
+      "minLength": 1,
+      "description": "Username of the manager who set the policy. Feeds the audit log."
     },
     "ts": {
       "type": "string",
@@ -37,8 +44,17 @@
       "product_id": "SKU-001",
       "min_price": 9.99,
       "max_price": 15.99,
+      "auto_approve_pct": 5,
       "set_by": "rchen",
-      "ts": "2026-09-17T10:00:00Z"
+      "ts": "2026-09-17T09:00:00Z"
+    },
+    {
+      "product_id": "SKU-004",
+      "min_price": 11.0,
+      "max_price": 16.0,
+      "auto_approve_pct": null,
+      "set_by": "rchen",
+      "ts": "2026-09-17T09:00:00Z"
     }
   ]
 }

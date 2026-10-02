@@ -1,0 +1,30 @@
+[project]
+name = "dashboard-api"
+version = "0.1.0"
+description = "Layer 5 API — the decision gate between the pricing agent and the shelf"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "asyncpg>=0.30",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "aiomqtt>=2.3",
+    "argon2-cffi>=23.1",
+    "python-multipart>=0.0.12",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 96
+target-version = "py311"
