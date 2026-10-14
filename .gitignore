@@ -49,3 +49,7 @@ edge/msp432/Debug/
 edge/msp432/Release/
 *.out
 *.map
+
+# Personal course documents, never committed (were ignored before the 295B restructure)
+template_docs/Bhaskar, Vidhyacharan Sp26-2 - Parth, Gala.docx
+template_docs/Project-Contribution-template.docx

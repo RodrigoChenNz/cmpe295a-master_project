@@ -1,164 +1,115 @@
-# Multi-Agent System for Dynamic Retail Pricing with Edge-IoT Integration
+# ShelfIQ — an AI agent that runs a small store, with the owner in the loop
 
 SJSU CMPE 295A/295B master's project. Advisor: Prof. Vidyacharan Bhaskar.
-
-An RL agent **recommends** retail prices in real time, each recommendation carrying a
-SHAP-based explanation. A store manager approves, overrides or rejects it — or delegates the
-small ones to a standing policy. The approved price lands in two places: the manager's
-dashboard, and the 16x2 LCD at the shelf edge.
-
-**The agent never sets a price.** Nothing reaches a shelf that a human did not approve or
-explicitly delegate, and every one of those decisions is logged with a name against it. That
-is what makes the explanation load-bearing rather than decorative: the manager reads it
-*before* deciding, not after the price has already moved.
-
 **Team:** Het Bhalala · Rodrigo Chen · Parth Gala · Aruna Samhitha Mutyala
+
+## What it is
+
+A store that sells on the floor and online. Every night an agent reviews how yesterday's
+decisions turned out, researches competitor prices and seasonality, reprices every product
+with a plain-language explanation, plans what to buy from suppliers, and curates the online
+listings. **Nothing it decides takes effect until the owner approves it in one inbox, or has
+delegated that kind of decision by policy.** Every verdict, with the owner's reason, feeds the
+next run, so the agent learns the owner's preferences the way a new employee would.
+
+Approved shelf prices reach the labels over MQTT. The store also exposes a
+[Universal Commerce Protocol](https://ucp.dev) server, so other people's shopping agents can
+browse, buy and bargain for bulk, and the store's own agent uses the same protocol to buy from
+suppliers. The owner ends up doing the work of a buyer, a pricing analyst, a web merchandiser
+and a bookkeeper by reading one summary a day and approving or rejecting what the agent wants
+to do. Moving the goods is the only job left on the floor.
+
+What changed from the 295A design: the store sells online, the agent runs nightly instead of
+continuously, every kind of decision (not only prices) goes through the owner's inbox, the
+inbox produces training signal, and the UCP server is new.
 
 ## Architecture
 
 ```
-L5  Manager Dashboard    React + FastAPI + Postgres        Rodrigo
-L4  AI Backend           RL pricing agent · SHAP · forecaster   Parth, Aruna
-L3  Message Bus          Mosquitto (MQTT v5)               shared
-L2  Edge Gateway         MSP432 LaunchPad · ESP32          Het
-L1  Physical Display     16x2 LCD · Heltec E213 e-ink      Het
+owner console (React)  ──REST/WS──▶  backend (FastAPI + Postgres)  ◀──REST──  store agent (nightly run)
+storefront (React)     ──UCP─────▶      /api  /ucp/v1  /.well-known/ucp        forecaster · simulator
+buyer agents           ──UCP─────▶            │
+supplier agents        ◀──UCP────  agent      │ retail/price (MQTT, retained, daily)
+                                              ▼
+                                   shelf labels (ESP32 e-ink · 16x2 LCD)  ──retail/shelf──▶ backend
 ```
 
-The layers never call each other's functions — they exchange JSON over MQTT. Those payload
-shapes live in [`contracts/`](contracts/) and are the real interface between the four of us.
-**Read that directory before writing any code.**
+| Part | Tech | Owner | Status |
+|---|---|---|---|
+| Console (`services/dashboard-web`) | React 19 · Vite · TypeScript | Rodrigo | built: review queue, catalogue, labels, locations, rules, users, activity |
+| Backend (`services/dashboard-api`) | FastAPI · asyncpg · aiomqtt | Rodrigo | built: the decision gate, MQTT bridge, REST, WebSocket |
+| Store agent (`services/pricing-agent`) | PyTorch · SB3 · gymnasium · SHAP · web search | Parth | stub |
+| Forecaster (`services/forecaster`) | Prophet · LSTM · scikit-learn | Aruna | stub |
+| Simulator (`services/simulator`) | gym environment, demand and competitor feed, supplier and buyer UCP stand-ins | Parth | stub |
+| UCP server and storefront | FastAPI · React | unassigned | new |
+| Shelf labels | Heltec E213 e-ink on ESP32; 16x2 LCD on MSP432 via gateway | Het | not started |
+
+## The contract
+
+**[`api-spec/README.md`](api-spec/README.md)** is the single interface document, split by
+team: hardware (§2), frontend (§3), backend (§4), UCP (§5), AI (§6). It marks what is built,
+what is new, and what needs all four approvals. Its §9 lists simplifications to decide before
+building. [`contracts/`](contracts/) holds the MQTT JSON schemas; changing those needs all four
+of us.
 
 ## Quick start
 
-Host prerequisites: Docker Desktop, Node 20+, and `uv` (which supplies Python 3.11 itself):
+Host prerequisites: Docker Desktop, Node 20+, `uv`.
 
 ```bash
-brew install uv && uv python install 3.11
-```
-
-Then, from a clean clone:
-
-```bash
-make up          # the real system, on an empty database — nothing fake
-make demo        # sample catalogue + fake publisher standing in for Layers 1-4
-make fresh       # wipe the real database and start over from first-run setup
+make up          # the real system on an empty database
+make demo        # sample catalogue + fake publisher standing in for the agent and forecaster
+make fresh       # wipe the real database and start over
 make help        # everything else
 ```
 
-Then open <http://localhost:5173>.
-
-**`make up` has no sample or emulated data.** On the very first run the
-database is empty and the console asks you to **create the first account**.
-That account is the **Super admin**: it can do everything a manager can, and it
-is the only role that can grant or remove the manager role. Everyone else joins
-through an invite link from the Users screen.
-
-**Then set up the store, in this order:**
-1. Name the layout's levels on Locations (Zone › Aisle › Bay by default, or add Floor on top).
-2. Add locations.
-3. Add products. This isn't possible until step 1 is done.
-4. Link the products to locations.
-
-The Dashboard keeps a checklist until every step is done. [COMMANDS.md](COMMANDS.md) has the details.
-
-**What you add is kept.** `make down`, `make up` and `make restart` never touch
-the database volume. Only `make fresh` (just the real database) and `make nuke`
-(everything) delete data.
-
-**`make demo`** (same as `make up DEMO=1`) loads the design prototype's sample
-catalogue and runs `tools/fake_publisher.py` as a container. The publisher sends
-proposals and explanations on the real contract topics and reports label
-sightings, which keeps the console *live*. The demo database has its own volume,
-so you can switch between the two modes without `make nuke`, and sample rows
-never get into the real database. `make fake` follows the publisher's output.
-Sign in to the demo with the account named in `.env` (`make up` creates `.env`
-from `.env.example`). `make fresh-demo` resets the demo to its seed.
-
-`make tap` watches the MQTT bus; `make psql` opens a shell on the database.
-
-**One command, no manual setup step.** If bringing the system up ever needs a human to explain
-something, fix the compose file rather than writing it down.
+Open <http://localhost:5173>. On an empty database the first account you create is the Super
+admin; in the demo sign in with the account in `.env` (`admin@admin.com` / `admin` by default).
+Ports: 5173 console, 8000 API (`/docs`, `/health`), 5432 Postgres, 1883 MQTT, 9101 MQTT over
+WebSocket. [COMMANDS.md](COMMANDS.md) has the rest.
 
 ## Layout
 
 ```
-contracts/     ★ MQTT payload schemas — changing these needs all four approvals
-infra/           docker-compose, mosquitto config, postgres schema
+api-spec/        ★ the API spec, one file, by team
+contracts/       ★ MQTT payload schemas — four approvals to change
+infra/           docker-compose, mosquitto config, postgres schema and demo seed
 services/
-  dashboard-api/ ✔ FastAPI · the decision gate · MQTT↔WS         Rodrigo
-  dashboard-web/ ✔ React 19 · Vite · TypeScript · the console    Rodrigo
-  pricing-agent/   stub rules → DDPG/DQN + SHAP                  Parth
-  forecaster/      stub → Prophet/LSTM + churn risk              Aruna
-  simulator/       fake store; becomes the gym environment       Parth
-edge/
-  msp432/          firmware · 16x2 LCD driver                    Het
-  gateway/         MQTT ↔ serial link (design not settled)       Het
-                   note: the e-ink label is a Heltec Vision Master
-                   E213 on ESP32, a different part and toolchain
-tools/           fake publisher, MQTT tap, validators, smoke test
-notebooks/       EDA, training runs, model comparison
+  dashboard-api/ FastAPI backend                      Rodrigo
+  dashboard-web/ React console                        Rodrigo
+  pricing-agent/ the store agent (stub)               Parth
+  forecaster/    demand and dead-stock risk (stub)    Aruna
+  simulator/     fake store, gym env, UCP stand-ins   Parth
+tools/           fake publisher, seed generator
 docs/            workbook, meeting notes, agent prompts
-design_handoff_shelfiq/  ★ the console's visual source of truth
 ```
 
-Layer 5 is built: the review queue, the catalogue, product detail, the activity
-log and the decision gate behind them all. Five screens are stubbed with their
-API half already working — see
-[`services/dashboard-web/README.md`](services/dashboard-web/README.md).
+Planned, not yet in the repo: `services/ucp-server/`, `services/storefront-web/`, `edge/` (firmware).
 
 ## How we work
 
-**Walking skeleton first.** The 295A attempt built one layer deep and the layers never
-exchanged a message. This time: the thinnest end-to-end path through all five layers, every
-component a deliberate stub, passing in week 1. Then thicken each layer independently behind
-the frozen contract.
-
-Week 1 target — `make smoke` green:
-
-```
-simulator → stub agent ──proposal──▶ dashboard-api ──▶ inside policy? ──yes──┐
-                                           │                                 │
-                                           no → review queue → manager       │
-                                                      └──── approves ────────┤
-                                                                             ▼
-                                                                    retail/price/SKU-001
-                                                                       ├→ WebSocket → browser
-                                                                       └→ gateway → MSP432 → LCD
-```
-
-No RL, no SHAP, no Prophet, no real hardware. Those swap in afterwards, one at a time, without
-touching anyone else's code.
-
-**Branches and PRs:**
-- Work branches are named `<type>/<initials>/<short-name>`, e.g. `feature/rc/layout-levels`.
-  They are cut from `dev` and merged back into it through small PRs, reviewed by one teammate.
-- Each week `dev` is promoted to `stage` for integration testing, and a verified `stage` is
-  promoted to `main`, which is what we demo and submit.
-- A PR touching `contracts/` needs all four of us.
-
-The full workflow is in [CONTRIBUTING.md](CONTRIBUTING.md): naming, commits, reviews,
-promotions and hotfixes.
-
-**Weekly integration:** everyone merged, `make up`, `make smoke`. If it's red, that's the agenda.
-
-**Meeting notes** go in [`docs/meetings/`](docs/meetings/) — they're workbook material, so don't
-let them lapse.
+Walking skeleton first: the thinnest path through every layer, then thicken each behind the
+contract. Branches `<type>/<initials>/<short-name>` off `dev`, small PRs, squash-merge, weekly
+promotion `dev → stage → main`. Details in [CONTRIBUTING.md](CONTRIBUTING.md). Meeting notes
+go in [`docs/meetings/`](docs/meetings/).
 
 ## Open decisions
 
-| Question | Owner | Why it blocks |
+| Question | Owner | Where |
 |---|---|---|
-| **Sign off the approval gate** — the agent now proposes rather than prices | all four | Breaking change across `proposal`, `price` and `guardrail`. See [`contracts/README.md`](contracts/README.md#status). Firmware is unaffected. |
-| **Does approval gating weaken the "agentic" claim in Ch.2?** | all four + advisor | It strengthens the XAI contribution and matches the cited 54%→89% acceptance figure, but it is Chapter 2 surgery. Raise it before building. |
-| MSP432P401R or MSP430? "MSP32" is not a TI part number | Het | Determines the LCD node's toolchain |
-| **Two label families now, not one** — 16x2 LCD and a Heltec Vision Master E213 (ESP32) e-ink | Het | Two toolchains and two Wi-Fi stories. The ESP32 has on-die Wi-Fi; neither MSP part does. The console already models both (`shelf_labels.kind`). |
-| **Add `confidence` and `rationale` to `proposal`?** | all four | The console shows both and the contract carries neither, so they are optional extras today and read as "Not reported". Backward-compatible to add. |
-| **Add a `retail/shelf/{label_id}` acknowledgement?** | all four + Het | Without it "confirmed" only means "published and no complaint", and label liveness is inferred from silence. It buys a real third state and a better demo. |
-| How MQTT reaches the board — CC3120, ESP8266 modem, or Pi bridge | Het | Neither MSP part has on-die Wi-Fi; see [`edge/gateway/`](edge/gateway/) |
-| Hardware order placed? | Het | Lead time; simulation only carries so far |
+| Agent ↔ backend over MQTT (as built) or REST (recommended) | all four | spec §9 S1 |
+| One label family (ESP32 e-ink) or two | Het | spec §9 S2 |
+| Nightly batch policy instead of real-time TTLs and rate limits | Rodrigo, Parth | spec §9 S3 |
+| Money as integer minor units everywhere | all four | spec §9 S4 |
+| Separate UCP service or one backend process | Rodrigo | spec §9 S5 |
+| UCP namespace we control for our negotiation extension | Rodrigo | spec O1 |
+| Who owns the UCP server and the storefront | team | spec O2 |
+| Does approval gating of purchases and deals change Chapter 2 | all + advisor | spec O6 |
+| Hardware order placed? | Het | |
 
 ## Docs
 
-- [Workbook (295A)](docs/workbook_assignment_1.md) — literature review, architecture, schedule
+- [API spec](api-spec/README.md)
+- [Workbook (295A)](docs/workbook_assignment_1.md)
 - [Meeting notes](docs/meetings/)
-- [Agent prompts](docs/prompts/) — self-contained briefs for building each layer
+- [Agent prompts](docs/prompts/)
