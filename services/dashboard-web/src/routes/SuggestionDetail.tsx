@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import {
-  countdown, dateTime, money, pct, pctPlain, relative,
+  countdown, dateTime, money, pct, pctPlain, relative, isManagerRole,
 } from '../lib/format';
 import { useResource } from '../lib/useStream';
 import { usePageChrome, useShell, useStreamEvents } from '../components/AppShell';
@@ -31,7 +31,7 @@ export function SuggestionDetail() {
   const { decisionId = '' } = useParams();
   const navigate = useNavigate();
   const { user, toast } = useShell();
-  const canDecide = user.role === 'manager';
+  const canDecide = isManagerRole(user.role);
 
   const [manual, setManual] = useState('');
   const [busy, setBusy] = useState<'approve' | 'override' | 'reject' | null>(null);

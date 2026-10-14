@@ -18,11 +18,12 @@ from typing import Any
 MONEY_FIELDS = {
     "price", "current_price", "proposed_price", "previous_price", "final_price",
     "unit_cost", "min_price", "max_price", "old_price", "new_price", "delta",
+    "last_price",
     "base_value",
 }
 PCT_FIELDS = {
     "delta_pct", "change_pct", "margin_pct", "proposed_margin_pct",
-    "auto_approve_pct", "min_margin_pct", "floor_pct", "ceiling_pct",
+    "auto_approve_pct", "min_margin_pct", "ceiling_pct",
     "max_change_pct", "category_min_margin_pct", "dead_stock_risk",
     "agent_confidence",
 }

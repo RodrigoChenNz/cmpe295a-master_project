@@ -46,6 +46,11 @@
   --surface: #fbf9f2;      /* card surface */
   --photo-slot: #f2eee2;   /* product photo placeholder tile */
 
+  /* Shelf labels row tints. The only two colours in the handoff with no
+     existing token — every other value on those screens maps to one above. */
+  --row-failed: #fdf7f6;   /* its last push did not confirm */
+  --row-offline: #fafafa;  /* not seen inside the stale window */
+
   /* Nav, which is its own small scale because it sits on the dark plane */
   --nav-bg: #17150e;
   --nav-hover: #252318;

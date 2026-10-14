@@ -15,14 +15,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
-import { dateTime, money, pctPlain, relative } from '../lib/format';
+import { dateTime, money, pctPlain, relative, shelfLine1, shelfLine2, isManagerRole } from '../lib/format';
 import { useResource } from '../lib/useStream';
 import { usePageChrome, useShell, useStreamEvents } from '../components/AppShell';
 import { ShelfDisplay } from '../components/ShelfDisplay';
 import {
-  Battery, Button, CategoryPill, ErrorState, MarginPill, PriceHistoryChart,
+  Battery, Button, CategoryPill, ErrorState, MarginPill, Modal, PriceHistoryChart,
   SignalBars, SkeletonRows, StatusTag, StockCell,
 } from '../components/ui';
+import { LocationPicker } from '../components/LocationPicker';
 import s from './ProductDetail.module.css';
 
 interface Draft {
@@ -44,9 +45,9 @@ interface Draft {
 export function ProductDetail() {
   const { productId = '' } = useParams();
   const navigate = useNavigate();
-  const { user, toast } = useShell();
+  const { user, toast, reloadMeta } = useShell();
   const canEdit = user.role !== 'viewer';
-  const canPrice = user.role === 'manager';
+  const canPrice = isManagerRole(user.role);
 
   const res = useResource(() => api.product(productId), [productId]);
   useStreamEvents(['products', 'price', 'proposal', 'labels'], res.reload);
@@ -56,6 +57,9 @@ export function ProductDetail() {
   const [priceDraft, setPriceDraft] = useState('');
   const [reasonTag, setReasonTag] = useState('Manager set');
   const [pricing, setPricing] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const [moveTo, setMoveTo] = useState<string | null>(null);
+  const [movingBusy, setMovingBusy] = useState(false);
 
   const product = res.data?.product;
 
@@ -112,8 +116,8 @@ export function ProductDetail() {
 
   // What the label will actually show, computed the same way the API does so
   // the preview and the published strings cannot disagree.
-  const previewLine1 = (draft.display_name || draft.name).toUpperCase().slice(0, 16);
-  const previewLine2 = composeLine2(priceDraft || product.current_price, reasonTag);
+  const previewLine1 = shelfLine1(draft.display_name || draft.name);
+  const previewLine2 = shelfLine2(priceDraft || product.current_price, reasonTag);
 
   const dirty =
     draft.name !== product.name ||
@@ -460,6 +464,18 @@ export function ProductDetail() {
             <Row label="Category">
               <CategoryPill category={product.category} />
             </Row>
+            <Row label="Location">
+              {product.location_path ?? <span className={s.rowNote}>Not linked yet</span>}
+              {canEdit && (
+                <button
+                  type="button"
+                  className={s.rowAction}
+                  onClick={() => { setMoveTo(product.location_id); setMoving(true); }}
+                >
+                  {product.location_id ? 'Change' : 'Link'}
+                </button>
+              )}
+            </Row>
             <Row label="Stock">
               <StockCell stock={product.stock_on_hand} />
             </Row>
@@ -500,6 +516,9 @@ export function ProductDetail() {
               </Row>
               <Row label="Position">
                 <span className={s.mono}>{label.slot_code ?? '—'}</span>
+                {label.location_path && (
+                  <span className={s.rowNote}>{label.location_path}</span>
+                )}
               </Row>
               <Row label="Last seen">{relative(label.last_seen_at)}</Row>
               <Row label="Signal">
@@ -588,6 +607,42 @@ export function ProductDetail() {
           </section>
         )}
       </aside>
+
+      {moving && (
+        <Modal
+          title={product.location_id ? `Move ${product.name}` : `Link ${product.name} to a location`}
+          subtitle={product.location_path ? `Now in ${product.location_path}` : 'Not linked yet'}
+          onClose={() => setMoving(false)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setMoving(false)}>Cancel</Button>
+              <Button
+                busy={movingBusy}
+                aria-disabled={moveTo === product.location_id || undefined}
+                onClick={async () => {
+                  if (moveTo === product.location_id) return;
+                  setMovingBusy(true);
+                  try {
+                    await api.setProductsLocation([product.product_id], moveTo);
+                    toast(moveTo ? 'Location saved.' : `${product.name} is no longer linked to a location.`);
+                    setMoving(false);
+                    res.reload();
+                    reloadMeta();
+                  } catch (err) {
+                    toast(err instanceof ApiError ? err.message : 'Could not save the location.', 'bad');
+                  } finally {
+                    setMovingBusy(false);
+                  }
+                }}
+              >
+                {moveTo ? 'Save location' : 'Unlink'}
+              </Button>
+            </>
+          }
+        >
+          <LocationPicker value={moveTo} onChange={setMoveTo} unassignedLabel="No location (unlink)" />
+        </Modal>
+      )}
     </div>
   );
 }
@@ -595,16 +650,6 @@ export function ProductDetail() {
 /** Sentence case for a machine-supplied name like "grocery". */
 function title(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-/** Line 2 as the firmware will see it, mirroring gate.render_lines() exactly. */
-function composeLine2(price: string | null, reasonTag: string): string {
-  if (!price) return '';
-  const moneyPart = `$${Number(price).toFixed(2)}`;
-  const room = 16 - moneyPart.length - 1;
-  return room >= 4 && reasonTag
-    ? `${moneyPart} ${reasonTag.slice(0, room)}`.slice(0, 16)
-    : moneyPart.slice(0, 16);
 }
 
 function Field({

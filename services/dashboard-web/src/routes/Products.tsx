@@ -19,9 +19,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
-import { int, money, plural } from '../lib/format';
+import { int, money, plural, isManagerRole } from '../lib/format';
 import { useDebounced, useResource } from '../lib/useStream';
 import { usePageChrome, useShell, useStreamEvents } from '../components/AppShell';
+import { AddProductModal } from '../components/AddProductModal';
+import { LocationPicker, flattenTree } from '../components/LocationPicker';
 import {
   Button, CategoryPill, EmptyState, ErrorState, Icon, MarginPill, Modal, MoreMenu,
   Pagination, SearchInput, SkeletonRows, StatusTag, StockCell,
@@ -51,9 +53,15 @@ const REVIEW_ROWS: { key: PriceReview; label: string; tone: string }[] = [
 
 export function Products() {
   const navigate = useNavigate();
-  const { user, toast } = useShell();
+  const { user, toast, meta, reloadMeta } = useShell();
   const canEdit = user.role !== 'viewer';
-  const canDelete = user.role === 'manager';
+  // Products come after the layout. `meta` is null only for a moment on load,
+  // and treating that moment as "not configured" would flash a wrong notice.
+  const layoutReady = meta ? meta.layout.configured : true;
+  const canDelete = isManagerRole(user.role);
+  // An opening price becomes a price_history row with `approved_by` on it, so
+  // it needs the authority that makes that row mean something.
+  const canPrice = isManagerRole(user.role);
 
   // Deep links from the dashboard's attention panel land here with filters
   // already applied, so the route is the source of truth for the initial state.
@@ -65,6 +73,11 @@ export function Products() {
     () => (params.getAll('stock') as StockHealth[]) ?? [],
   );
   const [reviewSel, setReviewSel] = useState<PriceReview[]>([]);
+  // '' = anywhere, 'unassigned' = not linked to a location, else a location id
+  // (which includes everything inside it).
+  const [locSel, setLocSel] = useState<string>(() => params.get('location') ?? '');
+  const [locateOpen, setLocateOpen] = useState(false);
+  const [locateTo, setLocateTo] = useState<string | null>(null);
   const [catQ, setCatQ] = useState('');
   const [view, setView] = useState<SavedView>(
     () => (params.get('view') as SavedView) ?? 'all',
@@ -76,6 +89,7 @@ export function Products() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [addOpen, setAddOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [islandMsg, setIslandMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -92,13 +106,18 @@ export function Products() {
         stock: stockSel,
         review: reviewSel,
         view,
+        location: locSel || undefined,
         sort,
         dir,
         page,
         page_size: pageSize,
       }),
-    [query, catSel.join(','), stockSel.join(','), reviewSel.join(','), view, sort, dir, page, pageSize],
+    [query, catSel.join(','), stockSel.join(','), reviewSel.join(','), view, locSel, sort, dir, page, pageSize],
   );
+
+  // The layout, for the Location filter.
+  const places = useResource(() => api.locations(), []);
+  const placeOptions = useMemo(() => flattenTree(places.data?.tree ?? []), [places.data]);
 
   // Facets depend on the search only, which is the whole point.
   const facets = useResource(() => api.facets(query), [query]);
@@ -108,19 +127,12 @@ export function Products() {
     facets.reload();
   }, [list.reload, facets.reload]);
 
-  useStreamEvents(['products', 'price', 'proposal', 'suggestions', 'labels'], reload);
+  useStreamEvents(['products', 'price', 'proposal', 'suggestions', 'labels', 'locations'], reload);
+  useStreamEvents(['locations'], places.reload);
 
-  usePageChrome(
-    {
-      title: 'Products',
-      actions: canEdit ? (
-        <Button onClick={() => toast('Adding products by hand is not built yet — import a CSV or seed the catalogue.', 'bad')}>
-          <span className={s.plus}>+</span> Add product
-        </Button>
-      ) : undefined,
-    },
-    [canEdit],
-  );
+  // No header action: the handoff puts "+ Add product" in the toolbar, beside
+  // the search and the view switch, and gives this screen no header bullet.
+  usePageChrome({ title: 'Products' }, []);
 
   const rows = list.data?.rows ?? [];
 
@@ -188,12 +200,34 @@ export function Products() {
     setCatSel([]);
     setStockSel([]);
     setReviewSel([]);
+    setLocSel('');
     setView('all');
     setPage(1);
   };
 
   const anyFilter =
-    q !== '' || catSel.length > 0 || stockSel.length > 0 || reviewSel.length > 0 || view !== 'all';
+    q !== '' || catSel.length > 0 || stockSel.length > 0 || reviewSel.length > 0 ||
+    view !== 'all' || locSel !== '';
+
+  const doLocate = async () => {
+    setBusy(true);
+    try {
+      const result = await api.setProductsLocation(selectedVisible, locateTo);
+      const where = locateTo ? placeOptions.find((o) => o.id === locateTo)?.path : null;
+      flash(
+        where
+          ? `${result.count} linked to ${where}`
+          : `${result.count} no longer linked to a location`,
+      );
+      setLocateOpen(false);
+      reload();
+      reloadMeta();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not set the location.', 'bad');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const doArchive = async () => {
     setBusy(true);
@@ -335,6 +369,40 @@ export function Products() {
         </Section>
 
         <Section
+          title="Location"
+          open={!shut.loc}
+          onToggle={() => setShut((p) => ({ ...p, loc: !p.loc }))}
+        >
+          <AllRow
+            label="Anywhere"
+            count={facets.data?.total ?? null}
+            active={locSel === ''}
+            onClick={() => { setLocSel(''); setPage(1); }}
+          />
+          <AllRow
+            label="Not linked yet"
+            count={facets.data?.unassigned ?? null}
+            active={locSel === 'unassigned'}
+            onClick={() => { setLocSel('unassigned'); setPage(1); }}
+          />
+          <select
+            className={`field ${s.catSearch}`}
+            aria-label="Products in a location"
+            value={locSel === 'unassigned' ? '' : locSel}
+            onChange={(e) => { setLocSel(e.target.value); setPage(1); }}
+          >
+            <option value="">
+              {placeOptions.length ? 'In a location…' : 'No locations yet'}
+            </option>
+            {placeOptions.map((o) => (
+              <option key={o.id} value={o.id} title={o.path}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Section>
+
+        <Section
           title="Price review"
           open={!shut.review}
           onToggle={() => setShut((p) => ({ ...p, review: !p.review }))}
@@ -389,6 +457,29 @@ export function Products() {
           />
 
           <span className={s.toolbarRight}>
+            {/* Per the handoff: "+ Add product", then the view switch, then ⋯ */}
+            {canEdit && (
+              <Button
+                size="toolbar"
+                aria-disabled={!layoutReady || undefined}
+                title={layoutReady ? undefined : 'Set up the store layout on Locations first'}
+                onClick={() => {
+                  if (!layoutReady) {
+                    toast('Set up the store layout on the Locations screen before adding products.', 'bad');
+                    return;
+                  }
+                  setAddOpen(true);
+                }}
+              >
+                {/* Its own span, so the label is not separated from the glyph by
+                    a whitespace text node on top of the button's 6px gap. */}
+                <span className={s.plus} aria-hidden="true">
+                  +
+                </span>
+                <span>Add product</span>
+              </Button>
+            )}
+
             <span className={s.segmented} role="group" aria-label="View as">
               <button
                 type="button"
@@ -445,6 +536,30 @@ export function Products() {
 
         {list.loading ? (
           <SkeletonRows rows={8} columns={6} />
+        ) : rows.length === 0 && !anyFilter && !layoutReady ? (
+          // A brand-new store: the catalogue is empty because nothing can be
+          // added yet, not because a filter hid it.
+          <EmptyState
+            title="Set up the store layout first"
+            body={
+              isManagerRole(user.role)
+                ? 'Name your layout’s levels — for example Zone › Aisle › Bay — on the Locations screen. Products can be added as soon as that is saved, and linked to locations whenever you are ready.'
+                : 'A manager or super admin sets up the store’s layout first. Products can be added once that is done.'
+            }
+            actions={
+              isManagerRole(user.role) ? (
+                <Button onClick={() => navigate('/locations')}>Set up the layout</Button>
+              ) : undefined
+            }
+          />
+        ) : rows.length === 0 && !anyFilter ? (
+          <EmptyState
+            title="No products yet"
+            body="Add your catalogue first. Each product can be linked to a location now or later, from Locations or the product page."
+            actions={
+              canEdit ? <Button onClick={() => setAddOpen(true)}>Add product</Button> : undefined
+            }
+          />
         ) : rows.length === 0 ? (
           <EmptyState
             title={q ? 'No products match this search' : 'Nothing matches these filters'}
@@ -483,6 +598,7 @@ export function Products() {
                     <SortTh label="Product" col="name" sort={sort} dir={dir} onSort={sortBy} />
                     <SortTh label="SKU" col="sku" sort={sort} dir={dir} onSort={sortBy} />
                     <SortTh label="Category" col="category" sort={sort} dir={dir} onSort={sortBy} />
+                    <th className={s.th}>Location</th>
                     <SortTh label="Price" col="price" sort={sort} dir={dir} onSort={sortBy} right />
                     <SortTh label="Margin" col="margin" sort={sort} dir={dir} onSort={sortBy} right />
                     <SortTh label="Stock" col="stock" sort={sort} dir={dir} onSort={sortBy} />
@@ -521,6 +637,13 @@ export function Products() {
                       </td>
                       <td className={s.td} onClick={() => navigate(`/products/${p.product_id}`)}>
                         <CategoryPill category={p.category} />
+                      </td>
+                      <td
+                        className={`${s.td} ${s.supplierCell}`}
+                        title={p.location_path ?? undefined}
+                        onClick={() => navigate(`/products/${p.product_id}`)}
+                      >
+                        {p.location_path ?? <span className={s.noLabel}>Not linked</span>}
                       </td>
                       <td className={`${s.td} ${s.priceCell}`} onClick={() => navigate(`/products/${p.product_id}`)}>
                         {money(p.current_price)}
@@ -616,6 +739,7 @@ export function Products() {
                   </span>
                   <span className={s.cardRows}>
                     <CardRow label="Category" value={p.category ?? '—'} />
+                    <CardRow label="Location" value={p.location_path ?? 'Not linked'} />
                     <CardRow label="Brand" value={p.brand ?? '—'} />
                     <CardRow label="Cost" value={money(p.unit_cost)} />
                     <CardRow label="Margin" value={p.margin_pct === null ? '—' : `${Math.round(p.margin_pct)}%`} />
@@ -680,6 +804,14 @@ export function Products() {
               <button
                 type="button"
                 className={s.islandBtn}
+                disabled={!canEdit}
+                onClick={() => { setLocateTo(null); setLocateOpen(true); }}
+              >
+                <Icon.tag /> Location
+              </button>
+              <button
+                type="button"
+                className={s.islandBtn}
                 disabled={!canDelete}
                 onClick={doResend}
               >
@@ -707,6 +839,52 @@ export function Products() {
             </>
           )}
         </div>
+      )}
+
+      {addOpen && (
+        <AddProductModal
+          categories={categories.map((c) => c.category)}
+          canSetPrice={canPrice}
+          onClose={() => setAddOpen(false)}
+          onCreated={(detail) => {
+            setAddOpen(false);
+            const id = detail.product.product_id;
+            const price = detail.product.current_price;
+            // "Recorded" and "on the shelf" are different claims, and a brand
+            // new product has no label to reach anyway — so say which.
+            toast(
+              price === null
+                ? `${id} added${detail.product.location_path ? ` to ${detail.product.location_path}` : ', not linked to a location yet'} — pair a shelf label to it next.`
+                : detail.price_published === false
+                  ? `${id} added at ${money(price)} — recorded and queued, the shelf network is down.`
+                  : `${id} added at ${money(price)} — no label paired, so no shelf shows it yet.`,
+              price !== null && detail.price_published === false ? 'bad' : 'ok',
+            );
+            reload();
+          }}
+        />
+      )}
+
+      {locateOpen && (
+        <Modal
+          title={`Location for ${selectedVisible.length} ${plural(selectedVisible.length, 'product')}`}
+          subtitle="Where they live in the store. Leave it empty to unlink them."
+          onClose={() => setLocateOpen(false)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setLocateOpen(false)}>Cancel</Button>
+              <Button busy={busy} onClick={doLocate}>
+                {locateTo ? 'Link them' : 'Unlink them'}
+              </Button>
+            </>
+          }
+        >
+          <LocationPicker
+            value={locateTo}
+            onChange={setLocateTo}
+            unassignedLabel="No location (unlink)"
+          />
+        </Modal>
       )}
 
       {confirmDelete && (

@@ -235,6 +235,23 @@ Renders a bar only when the agent actually reported a confidence. Otherwise it
 says *"Not reported"* in words. **An empty bar reads as zero confidence, which
 is a claim the agent did not make.**
 
+### `Modal`
+
+`{ title, subtitle?, width, onClose, children, footer }`. Handles the backdrop,
+`role="dialog"`, Escape and outside-click (via `useDismiss`), and moving focus
+into the dialog — preferring `[data-autofocus]`, because the close button is
+earlier in the DOM than the body and would otherwise take focus on a form.
+
+**`onClose` is where a caller intervenes.** Escape, the ×, and an outside click
+all route through it, so a modal with unsaved work makes that one function
+decide — see `AddProductModal`'s `requestClose`.
+
+**Stacking two modals needs a guard.** `useDismiss` listens on `document`, so
+`stopPropagation` does nothing between two dialogs' listeners, and the upper
+modal's backdrop lies entirely outside the lower one's ref — meaning a click on
+*Keep editing* would otherwise close the form underneath it. The lower modal
+returns early from its close handler while the upper one is open.
+
 ### `Pagination`
 
 Shared by Products, Shelf labels and Activity log. Rows-per-page 10/25/50;
@@ -297,10 +314,30 @@ selection, and so does a click outside both the table and the island.
 | **No "Forgot password" link.** | There is no mail transport in this system, so the link would go nowhere. It says "Ask a manager for a reset", which is what actually happens. |
 | **Dashboard signals are changes / delegated share / markdown share.** | The handoff names Sales, Margin and Markdown. There is no point-of-sale feed anywhere in this system, so a sales line would be invented. The screen says that out loud rather than leaving the omission to be noticed. |
 | **Product detail separates Save from Publish.** | Editing a catalogue row and publishing a price to a shelf are different actions with different consequences, so they get different buttons. |
+| **The Add product modal has no `product_id` field, and its Cost is required.** | `product_id` is the frozen contract key that four services join on, so the server allocates it under an advisory lock. `unit_cost` is `NOT NULL`, and defaulting it to `0.00` would publish a claim that the product costs nothing — an invented figure of exactly the kind rule 3 exists to prevent. |
+| **A staff user cannot set an opening price.** | It becomes a `price_history` row carrying `approval` ∈ `auto\|manager\|override` and `approved_by`, plus a retained message that goes live the instant a label is paired. Writing `approval: "manager"` for a staff user would put a false claim of authority in an append-only audit table. They see an em dash and "A manager sets the opening price." |
+| **The Add preview's LCD line 2 is `$3.49 New produ`, not the handoff's `$X.XX EA`.** | The preview is computed by `shelfLine2`, the same rule the publisher uses, so the mirror cannot disagree with the glass about anything but timing. "EA" is a unit-pricing idiom this system never publishes. |
+| **The Add modal keeps the shared backdrop, body padding and close button** rather than the handoff's `flex-start / 56px 40px`, `22px 24px` body and 28px bordered ×. | One close affordance and one dialog position across every modal beats matching one prototype screen's 2px details. `.modal` already scrolls its body, so a tall form works centred. |
+| **Category is a select here, free text on Product detail.** | A typo'd "Diary" would permanently fragment the filter panel's counts. The two screens disagreeing about one field is itself a defect — Product detail should converge to a select. |
+| **"+ Add product" greys out via `aria-disabled`, not `disabled`.** | The handoff greys it while invalid. A truly disabled button cannot be focused and tells a keyboard user nothing, so the validation messages would be unreachable; `aria-disabled` looks the same, stays clickable, and clicking is what reveals the inline errors. |
+| **Label detail says "Settled at", not the handoff's "Confirmed at".** | `label_pushes.result = 'confirmed'` is written by a 45-second timeout, not by anything the label said. There is no acknowledgement topic, so "confirmed" would claim a fact this system cannot observe. Renaming one screen label is cheaper and more honest than renaming a database value four services may come to read. |
+| **Three roles, not the handoff's four.** | `users.role` is a CHECK of exactly `manager`, `staff`, `viewer`. A fourth tier in the UI would be a tab that maps to nothing the API enforces. They are relabelled "Store manager", "Shelf staff" and "Read only", and the permission matrix is built from the real auth dependencies (`require_manager`, `require_editor`, `current_user`) — each row names the dependency, so the screen cannot drift from what the server actually checks. |
+| **Pricing rules are percentages ("Margin floor %", "Ceiling headroom %"), not the handoff's money fields.** | `category_rules` stores `min_margin_pct` and `ceiling_pct`, and `min_price`/`max_price` are derived from them per SKU against each product's own cost. A money field would have to pick one cost to divide by, which is the invented figure rule 3 forbids. The columns are relabelled instead. |
+| **Blink is a console-owned topic, outside `contracts/`.** | `retail/label/{label_id}/blink`, qos 1, **`retain=False`** — a retained blink re-fires on every reconnect, forever. It goes through `gate.publish_label_command()` so every outbound publish still passes one module, and the button says "Blink sent", never "the label is blinking": nothing acknowledges it. |
+| **Settings omits Notifications, Agent schedule and the field-packs card; the store form omits Address.** | Each would be a control wired to nothing — there is no mail transport, the agent's cadence lives in the publisher process rather than any table this API can write, and no column stores an address. The MQTT card keeps only what is real: Test connection opens an actual broker session, and the card states the running host beside the stored one, because a form echoing a host this service is not connected to is the failure the whole mirror discipline exists to prevent. |
+| **Deleting a location asks for its blast radius back.** | `locations.parent_id` cascades and `shelf_labels.slot_code` is `ON DELETE SET NULL`, so one click on a zone can strip the position off a dozen labels. `DELETE` takes the slot and label counts the confirmation displayed, rechecks them inside the transaction, and 409s if they disagree — the dialog is an optimistic-concurrency token, not decoration. The cleared labels each get a `slot_cleared` event, because otherwise the only trace is absent data. |
+| **`category_rules.floor_pct` was dropped.** | Written by `PUT /api/rules/categories/{c}` and read by nothing. Left in place it is a number the API keeps returning that no longer corresponds to any behaviour. |
 
 ## 8. What is not built yet
 
-Shelf labels, Label detail, Pricing rules, Settings, Users and roles, Locations.
-Each has a stub at its route that names the endpoints already serving it — the
-API half of all five is built and tested, so they are screen-only work. See
-`src/routes/Planned.tsx`.
+Every screen in the handoff now exists. What remains is behaviour the hardware
+and the contracts cannot yet support:
+
+- **Shelf confirmation.** Label liveness is inferred from silence and "settled"
+  is a timeout. See `services/dashboard-api/README.md` for the acknowledgement
+  topic that would fix it.
+- **`confidence` and a prose `rationale`** on a proposal are nullable columns
+  the UI reports as "Not reported" when a publisher omits them.
+- **Per-SKU limits a manager set by hand are overwritten** by a category save.
+  The preview modal now shows how many rows would change, but skipping SKUs
+  whose `policy_set_by` is a username is its own decision and its own change.

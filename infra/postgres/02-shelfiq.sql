@@ -70,20 +70,46 @@ ALTER TABLE proposals
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. Locations — where in the store a label physically hangs
 -- ─────────────────────────────────────────────────────────────────────────────
--- A two-level tree (aisle → bay) plus the slots on each bay. The slot code
--- ("A3-04") is what staff say out loud, so it is the natural key.
+-- Each store names its own levels, top first: one floor might be
+-- Zone › Aisle › Bay, a bigger store Floor › Zone › Aisle › Bay. A manager
+-- configures them before anything else, and no product can be added until they
+-- have (dashboard-api enforces both). Depth 1 is the top level; slots — where a
+-- shelf label hangs, coded like "A3-04", which is what staff say out loud —
+-- attach only to the deepest one.
+--
+-- Names can change at any time. The number of levels can change only while no
+-- location exists, because existing nodes would otherwise sit at a depth that
+-- means something different from when they were made.
+
+CREATE TABLE location_levels (
+    depth       SMALLINT PRIMARY KEY CHECK (depth BETWEEN 1 AND 6),
+    name        TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 30),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX location_levels_name_idx ON location_levels (lower(name));
 
 CREATE TABLE locations (
     location_id  TEXT PRIMARY KEY,
     parent_id    TEXT REFERENCES locations(location_id) ON DELETE CASCADE,
     name         TEXT NOT NULL,
-    kind         TEXT NOT NULL CHECK (kind IN ('zone', 'aisle', 'bay')),
+    -- A child sits exactly one level below its parent; depth 1 has no parent.
+    -- dashboard-api checks that on every insert and move.
+    depth        SMALLINT NOT NULL REFERENCES location_levels(depth),
     sort_order   INTEGER NOT NULL DEFAULT 0,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT no_self_parent CHECK (parent_id IS DISTINCT FROM location_id)
 );
 
 CREATE INDEX locations_parent_idx ON locations (parent_id, sort_order);
+
+-- Two siblings may not share a name. The Shelf labels location filter shows
+-- names only, so a second "Aisle A" under one zone makes that select ambiguous.
+-- An expression index rather than UNIQUE (parent_id, name): a zone's parent_id
+-- is NULL, NULLs are distinct to a unique constraint, and the constraint would
+-- therefore not cover zones at all.
+CREATE UNIQUE INDEX locations_sibling_name_idx
+    ON locations (coalesce(parent_id, ''), lower(name));
 
 CREATE TABLE location_slots (
     slot_code    TEXT PRIMARY KEY,
@@ -92,6 +118,26 @@ CREATE TABLE location_slots (
 );
 
 CREATE INDEX location_slots_location_idx ON location_slots (location_id, sort_order);
+
+-- Where a product lives in the store, at any level. Optional: a catalogue is
+-- usually entered first and placed afterwards. Deleting a location leaves its
+-- products unassigned rather than deleting them.
+ALTER TABLE products
+    ADD COLUMN location_id TEXT REFERENCES locations(location_id) ON DELETE SET NULL;
+
+CREATE INDEX products_location_idx ON products (location_id) WHERE archived_at IS NULL;
+
+-- Every location with its full path, e.g. "Floor 1 › Grocery › Aisle 3 › Bay 1",
+-- so no screen has to rebuild it from the tree.
+CREATE VIEW shelfiq_location_paths AS
+WITH RECURSIVE walk AS (
+    SELECT location_id, depth, name::text AS path
+      FROM locations WHERE parent_id IS NULL
+    UNION ALL
+    SELECT c.location_id, c.depth, walk.path || ' › ' || c.name
+      FROM locations c JOIN walk ON c.parent_id = walk.location_id
+)
+SELECT location_id, depth, path FROM walk;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 4. Shelf labels — Layer 1 hardware, as the console sees it
@@ -167,7 +213,13 @@ CREATE TABLE label_events (
     label_id   TEXT NOT NULL REFERENCES shelf_labels(label_id) ON DELETE CASCADE,
     event_type TEXT NOT NULL CHECK (event_type IN (
                    'connected', 'disconnected', 'paired', 'unpaired',
-                   'firmware_updated', 'battery_low'
+                   'firmware_updated', 'battery_low',
+                   -- A manager asked the device to identify itself. Recorded so
+                   -- the console's one un-acknowledged command still has a trace.
+                   'blink_requested',
+                   -- The slot this label hung in was deleted underneath it.
+                   -- Without a row here the only evidence is absent data.
+                   'slot_cleared'
                )),
     detail     JSONB NOT NULL DEFAULT '{}'::jsonb,
     ts         TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -189,6 +241,8 @@ CREATE TABLE users (
     -- Argon2id. Never a plaintext or reversible value, and never logged.
     password_hash TEXT NOT NULL,
     role          TEXT NOT NULL DEFAULT 'viewer' CHECK (role IN (
+                      'superadmin', -- a manager who also owns accounts; the
+                                    -- first account created on a new store
                       'manager',   -- may approve prices and edit rules
                       'staff',     -- may edit the catalogue, not approve prices
                       'viewer'     -- read only
@@ -213,6 +267,19 @@ CREATE TABLE sessions (
 CREATE INDEX sessions_username_idx ON sessions (username);
 CREATE INDEX sessions_expiry_idx   ON sessions (expires_at);
 
+-- Outstanding invitations. Only a SHA-256 of the token is kept, so the database
+-- can recognise a link but never reproduce one; the invitee sets their own
+-- password with it, and every invite for that user is deleted when they do.
+CREATE TABLE user_invites (
+    token_hash  TEXT PRIMARY KEY,
+    username    TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+    created_by  TEXT REFERENCES users(username) ON DELETE SET NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at  TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX user_invites_username_idx ON user_invites (username);
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 6. Pricing rules — the per-category layer above the per-SKU guardrail
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -223,7 +290,10 @@ CREATE INDEX sessions_expiry_idx   ON sessions (expires_at);
 
 CREATE TABLE category_rules (
     category          TEXT PRIMARY KEY,
-    floor_pct         NUMERIC(5,2) CHECK (floor_pct  BETWEEN 0 AND 100),
+    -- Deliberately no `floor_pct`. A SKU's floor is derived from the margin
+    -- floor below (`unit_cost / (1 - min_margin_pct/100)`) and its ceiling from
+    -- `ceiling_pct`. A third percentage with no derivation and no consumer
+    -- would sit frozen at whatever seeded it while the API kept returning it.
     ceiling_pct       NUMERIC(5,2) CHECK (ceiling_pct BETWEEN 0 AND 1000),
     min_margin_pct    NUMERIC(5,2) NOT NULL DEFAULT 0
                           CHECK (min_margin_pct BETWEEN 0 AND 100),
@@ -312,9 +382,12 @@ SELECT
     l.kind        AS label_kind,
     l.status      AS label_status,
     l.slot_code,
+    p.location_id,
+    lp.path       AS location_path,
     ir.dead_stock_risk,
     ir.predicted_sellby
 FROM products p
+LEFT JOIN shelfiq_location_paths lp ON lp.location_id = p.location_id
 LEFT JOIN LATERAL (
     SELECT price, ts FROM price_history
     WHERE product_id = p.product_id ORDER BY ts DESC LIMIT 1

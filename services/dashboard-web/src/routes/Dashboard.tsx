@@ -14,7 +14,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { dateTime, int, money, pct, pctPlain, plural, relative, timeOnly } from '../lib/format';
 import { useResource } from '../lib/useStream';
-import { usePageChrome, useStreamEvents } from '../components/AppShell';
+import { usePageChrome, useShell, useStreamEvents } from '../components/AppShell';
+import { levelPath } from '../lib/format';
+import type { Meta } from '../lib/types';
 import { Button, ErrorState, Sparkline, SkeletonRows, StatusTag } from '../components/ui';
 import s from './Dashboard.module.css';
 
@@ -49,6 +51,7 @@ export function Dashboard() {
 
   return (
     <>
+      <GettingStarted />
       <div className={s.topRow}>
         {/* ── Store snapshot ───────────────────────────────────────────── */}
         <section className={`card ${s.snapshot}`}>
@@ -326,4 +329,91 @@ function MetricRow({
       <span className={s.metricNote}>{note}</span>
     </button>
   );
+}
+
+/** A new store's setup, in the order it has to happen: the layout's levels,
+ *  then locations, then products, then linking them. Shown until every step is
+ *  done, then never again — it is a checklist, not a feature. */
+function GettingStarted() {
+  const { meta } = useShell();
+  if (!meta) return null;
+  const steps = setupSteps(meta);
+  if (steps.every((x) => x.done)) return null;
+  const next = steps.find((x) => !x.done);
+
+  return (
+    <section className={`card ${s.setup}`}>
+      <div className={s.setupHead}>
+        <h2 className={s.panelTitle}>Getting started</h2>
+        <span className={s.setupProgress}>
+          {steps.filter((x) => x.done).length} of {steps.length} done
+        </span>
+      </div>
+      <ol className={s.setupList}>
+        {steps.map((step, i) => (
+          <li key={step.title} className={s.setupStep} data-done={step.done || undefined}>
+            <span className={s.setupMark} aria-hidden="true">{step.done ? '✓' : i + 1}</span>
+            <span className={s.setupText}>
+              <span className={s.setupTitle}>{step.title}</span>
+              <span className={s.setupNote}>{step.note}</span>
+            </span>
+            {!step.done && (
+              <Link
+                to={step.to}
+                className={s.setupLink}
+                data-next={step === next || undefined}
+              >
+                {step.action}
+              </Link>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function setupSteps(meta: Meta) {
+  const { layout, counts } = meta;
+  return [
+    {
+      title: 'Name your layout’s levels',
+      note: layout.configured
+        ? levelPath(layout.levels)
+        : 'For example Zone › Aisle › Bay, or Floor › Zone › Aisle › Bay.',
+      done: layout.configured,
+      to: '/locations',
+      action: 'Set up layout',
+    },
+    {
+      title: 'Add your locations',
+      note: counts.locations
+        ? `${counts.locations} ${plural(counts.locations, 'location')} in the layout`
+        : 'Build the tree, from the top level down.',
+      done: counts.locations > 0,
+      to: '/locations',
+      action: 'Add locations',
+    },
+    {
+      title: 'Add your products',
+      note: counts.products
+        ? `${counts.products} ${plural(counts.products, 'product')} in the catalogue`
+        : 'Enter the catalogue; locations can be linked afterwards.',
+      done: counts.products > 0,
+      to: '/products',
+      action: 'Add products',
+    },
+    {
+      title: 'Link products to locations',
+      note:
+        counts.products === 0
+          ? 'Once products exist, place each one in the layout.'
+          : counts.unassigned_products
+            ? `${counts.unassigned_products} ${plural(counts.unassigned_products, 'product')} not linked yet`
+            : 'Every product has a location',
+      done: counts.products > 0 && counts.unassigned_products === 0,
+      to: '/products?location=unassigned',
+      action: 'Link products',
+    },
+  ];
 }

@@ -46,10 +46,10 @@ services:
     volumes:
       # Applied in filename order on first start of an empty volume.
       # 01 mirrors contracts/ and needs all four approvals to change.
-      # 02 and 03 are console-side only; see their headers.
+      # 02 is console-side only; see its header. The sample seed (03) is not
+      # mounted here: it belongs to docker-compose.demo.yml (`make demo`).
       - ./postgres/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./postgres/02-shelfiq.sql:/docker-entrypoint-initdb.d/02-shelfiq.sql:ro
-      - ./postgres/03-seed.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
@@ -65,12 +65,9 @@ services:
       MQTT_HOST: mosquitto
       MQTT_PORT: 1883
       DATABASE_URL: postgresql://retail:retail_dev_only@postgres:5432/retail_pricing
-      # The console's sign-in needs one account that can actually sign in, and
-      # the seed ships every user with an unusable password hash so that no
-      # committed file in this repo holds a working credential. This turns one
-      # of them into a real account on startup. Override both in .env.
-      SHELFIQ_BOOTSTRAP_USER: ${SHELFIQ_BOOTSTRAP_USER:-rchen}
-      SHELFIQ_BOOTSTRAP_PASSWORD: ${SHELFIQ_BOOTSTRAP_PASSWORD:-}
+      # No bootstrap account here: on an empty database the first person to
+      # open the console creates the super admin. The demo overlay adds one,
+      # because its seeded users have no passwords.
       CORS_ORIGINS: http://localhost:5173
       # Plain http locally. Any deployment must set this true.
       SESSION_COOKIE_SECURE: "false"

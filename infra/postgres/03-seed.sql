@@ -36,51 +36,70 @@ INSERT INTO users (username, email, full_name, password_hash, role) VALUES
   ('amutyala', 'aruna.mutyala@sjsu.edu', 'Aruna Samhitha Mutyala', '!', 'viewer');
 
 -- ── Locations ───────────────────────────────────────────────────────────────
-INSERT INTO locations (location_id, parent_id, name, kind, sort_order) VALUES
-  ('zone-grocery', NULL, 'Grocery hall', 'zone', 1),
-  ('zone-tech', NULL, 'Electronics', 'zone', 2),
-  ('zone-apparel', NULL, 'Apparel', 'zone', 3),
-  ('aisle-a', 'zone-grocery', 'Aisle A - Chilled', 'aisle', 1),
-  ('aisle-b', 'zone-grocery', 'Aisle B - Bakery', 'aisle', 2),
-  ('aisle-c', 'zone-grocery', 'Aisle C - Produce', 'aisle', 3),
-  ('aisle-d', 'zone-grocery', 'Aisle D - Pantry', 'aisle', 4),
-  ('aisle-e', 'zone-grocery', 'Aisle E - Fresh counter', 'aisle', 5),
-  ('aisle-f', 'zone-tech', 'Aisle F - Electronics', 'aisle', 6),
-  ('aisle-g', 'zone-apparel', 'Aisle G - Apparel', 'aisle', 7);
+INSERT INTO location_levels (depth, name) VALUES
+  (1, 'Zone'),
+  (2, 'Aisle'),
+  (3, 'Bay');
+
+INSERT INTO locations (location_id, parent_id, name, depth, sort_order) VALUES
+  ('zone-grocery', NULL, 'Grocery hall', 1, 1),
+  ('zone-tech', NULL, 'Electronics', 1, 2),
+  ('zone-apparel', NULL, 'Apparel', 1, 3),
+  ('aisle-a', 'zone-grocery', 'Aisle A - Chilled', 2, 1),
+  ('aisle-b', 'zone-grocery', 'Aisle B - Bakery', 2, 2),
+  ('aisle-c', 'zone-grocery', 'Aisle C - Produce', 2, 3),
+  ('aisle-d', 'zone-grocery', 'Aisle D - Pantry', 2, 4),
+  ('aisle-e', 'zone-grocery', 'Aisle E - Fresh counter', 2, 5),
+  ('aisle-f', 'zone-tech', 'Aisle F - Electronics', 2, 6),
+  ('aisle-g', 'zone-apparel', 'Aisle G - Apparel', 2, 7),
+  ('bay-a-1', 'aisle-a', 'Bay A1', 3, 1),
+  ('bay-a-2', 'aisle-a', 'Bay A2', 3, 2),
+  ('bay-a-3', 'aisle-a', 'Bay A3', 3, 3),
+  ('bay-b-1', 'aisle-b', 'Bay B1', 3, 4),
+  ('bay-c-1', 'aisle-c', 'Bay C1', 3, 5),
+  ('bay-c-2', 'aisle-c', 'Bay C2', 3, 6),
+  ('bay-c-4', 'aisle-c', 'Bay C4', 3, 7),
+  ('bay-d-2', 'aisle-d', 'Bay D2', 3, 8),
+  ('bay-d-3', 'aisle-d', 'Bay D3', 3, 9),
+  ('bay-e-1', 'aisle-e', 'Bay E1', 3, 10),
+  ('bay-f-1', 'aisle-f', 'Bay F1', 3, 11),
+  ('bay-f-2', 'aisle-f', 'Bay F2', 3, 12),
+  ('bay-g-1', 'aisle-g', 'Bay G1', 3, 13),
+  ('bay-g-2', 'aisle-g', 'Bay G2', 3, 14);
 
 INSERT INTO location_slots (slot_code, location_id, sort_order) VALUES
-  ('A1-06', 'aisle-a', 1),
-  ('A2-11', 'aisle-a', 2),
-  ('A3-04', 'aisle-a', 3),
-  ('A3-09', 'aisle-a', 4),
-  ('B1-02', 'aisle-b', 5),
-  ('C1-01', 'aisle-c', 6),
-  ('C2-05', 'aisle-c', 7),
-  ('C4-07', 'aisle-c', 8),
-  ('D2-01', 'aisle-d', 9),
-  ('D3-08', 'aisle-d', 10),
-  ('E1-03', 'aisle-e', 11),
-  ('F1-01', 'aisle-f', 12),
-  ('F1-04', 'aisle-f', 13),
-  ('F2-02', 'aisle-f', 14),
-  ('F2-03', 'aisle-f', 15),
-  ('F2-06', 'aisle-f', 16),
-  ('G1-02', 'aisle-g', 17),
-  ('G1-03', 'aisle-g', 18),
-  ('G1-08', 'aisle-g', 19),
-  ('G2-01', 'aisle-g', 20),
-  ('G2-04', 'aisle-g', 21);
+  ('A1-06', 'bay-a-1', 1),
+  ('A2-11', 'bay-a-2', 2),
+  ('A3-04', 'bay-a-3', 3),
+  ('A3-09', 'bay-a-3', 4),
+  ('B1-02', 'bay-b-1', 5),
+  ('C1-01', 'bay-c-1', 6),
+  ('C2-05', 'bay-c-2', 7),
+  ('C4-07', 'bay-c-4', 8),
+  ('D2-01', 'bay-d-2', 9),
+  ('D3-08', 'bay-d-3', 10),
+  ('E1-03', 'bay-e-1', 11),
+  ('F1-01', 'bay-f-1', 12),
+  ('F1-04', 'bay-f-1', 13),
+  ('F2-02', 'bay-f-2', 14),
+  ('F2-03', 'bay-f-2', 15),
+  ('F2-06', 'bay-f-2', 16),
+  ('G1-02', 'bay-g-1', 17),
+  ('G1-03', 'bay-g-1', 18),
+  ('G1-08', 'bay-g-1', 19),
+  ('G2-01', 'bay-g-2', 20),
+  ('G2-04', 'bay-g-2', 21);
 
 -- ── Pricing rules ───────────────────────────────────────────────────────────
-INSERT INTO category_rules (category, floor_pct, ceiling_pct, min_margin_pct, agent_may_suggest, set_by) VALUES
-  ('Dairy', 25, 15, 15, TRUE, 'rchen'),
-  ('Bakery', 40, 10, 12, TRUE, 'rchen'),
-  ('Produce', 35, 15, 14, TRUE, 'rchen'),
-  ('Pantry', 20, 20, 18, TRUE, 'rchen'),
-  ('Seafood', 30, 15, 16, TRUE, 'rchen'),
-  ('Electronics', 15, 10, 20, TRUE, 'rchen'),
-  ('Clothing', 50, 20, 30, TRUE, 'rchen'),
-  ('Household', 20, 15, 18, FALSE, 'rchen');
+INSERT INTO category_rules (category, ceiling_pct, min_margin_pct, agent_may_suggest, set_by) VALUES
+  ('Dairy', 15, 15, TRUE, 'rchen'),
+  ('Bakery', 10, 12, TRUE, 'rchen'),
+  ('Produce', 15, 14, TRUE, 'rchen'),
+  ('Pantry', 20, 18, TRUE, 'rchen'),
+  ('Seafood', 15, 16, TRUE, 'rchen'),
+  ('Electronics', 10, 20, TRUE, 'rchen'),
+  ('Clothing', 20, 30, TRUE, 'rchen'),
+  ('Household', 15, 18, FALSE, 'rchen');
 
 INSERT INTO change_limits (id, max_change_pct, max_changes_per_day, min_hours_between, proposal_ttl_hours, set_by)
 VALUES (TRUE, 20, 3, 4, 4, 'rchen');
@@ -173,6 +192,31 @@ INSERT INTO shelf_labels (label_id, kind, product_id, slot_code, status,
   ('SHLF-0309', 'eink', 'SKU-023', 'G2-01', 'syncing', now() - interval '40 seconds', -64, 87, 'e213-1.4.2', now() - interval '2592000 seconds'),
   ('SHLF-0313', 'lcd', 'SKU-024', 'G1-08', 'failed', now() - interval '1560 seconds', -83, 29, '1.3.9', now() - interval '2592000 seconds'),
   ('SHLF-0317', 'lcd', 'SKU-025', 'G2-04', 'offline', now() - interval '21600 seconds', -95, 7, '1.3.9', now() - interval '2592000 seconds');
+
+-- Products live where their label hangs; unlabelled ones stay unassigned.
+UPDATE products p SET location_id = v.location_id FROM (VALUES
+  ('SKU-001', 'bay-a-3'),
+  ('SKU-002', 'bay-b-1'),
+  ('SKU-003', 'bay-a-2'),
+  ('SKU-004', 'bay-c-4'),
+  ('SKU-005', 'bay-d-2'),
+  ('SKU-006', 'bay-a-3'),
+  ('SKU-007', 'bay-e-1'),
+  ('SKU-008', 'bay-c-2'),
+  ('SKU-009', 'bay-a-1'),
+  ('SKU-010', 'bay-c-1'),
+  ('SKU-011', 'bay-d-3'),
+  ('SKU-015', 'bay-f-1'),
+  ('SKU-016', 'bay-f-2'),
+  ('SKU-017', 'bay-f-2'),
+  ('SKU-018', 'bay-f-2'),
+  ('SKU-019', 'bay-f-1'),
+  ('SKU-021', 'bay-g-1'),
+  ('SKU-022', 'bay-g-1'),
+  ('SKU-023', 'bay-g-2'),
+  ('SKU-024', 'bay-g-1'),
+  ('SKU-025', 'bay-g-2')
+) AS v(product_id, location_id) WHERE p.product_id = v.product_id;
 
 INSERT INTO label_events (label_id, event_type, detail, ts) VALUES
   ('SHLF-0142', 'connected', '{"firmware": "1.4.2"}'::jsonb, now() - interval '2592000 seconds'),

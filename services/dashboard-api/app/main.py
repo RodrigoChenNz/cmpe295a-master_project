@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 
 from . import auth, bus, db, ingest
 from .config import settings
-from .routers import activity, dashboard, labels, meta, products, rules, stream, users
+from .routers import activity, dashboard, labels, locations, meta, products, rules, stream, users
 from .routers import auth as auth_router
 from .routers import suggestions
 
@@ -47,9 +47,50 @@ async def _housekeeping(stop: asyncio.Event) -> None:
             await asyncio.wait_for(stop.wait(), timeout=TICK_SECONDS)
 
 
+async def _check_schema() -> None:
+    """The schema only reaches a database through Postgres's init scripts, which
+    run on an empty volume and never again. A volume created before a schema
+    change keeps the old shape, and fails later as a confusing 500 on whichever
+    screen touches the difference. Say so at startup instead."""
+    # One table per schema change worth detecting; add to it, never replace.
+    required = ("user_invites", "location_levels")
+    missing = [
+        t for t in required
+        if not await db.fetchval("SELECT to_regclass($1) IS NOT NULL", f"public.{t}")
+    ]
+    if missing:
+        raise RuntimeError(
+            f"The database predates the current schema (no {', '.join(missing)}). Recreate it: "
+            "`make fresh` (or `make fresh-demo` for the demo database). This "
+            "deletes that database's data."
+        )
+
+
+async def _ensure_singletons() -> None:
+    """An unseeded database has no store_settings or change_limits row, and
+    the Settings and Rules screens update those in place, so a save would
+    silently change nothing. Create both from the schema's defaults; the store's
+    broker fields come from what this process is actually connected to, so
+    Settings does not open on a spurious 'restart required'. A no-op when the
+    rows exist (the demo seed, or a manager's saved settings)."""
+    await db.execute(
+        """INSERT INTO store_settings (id, mqtt_host, mqtt_port, mqtt_tls)
+           VALUES (TRUE, $1, $2, $3)
+           ON CONFLICT (id) DO NOTHING""",
+        settings.mqtt_host,
+        settings.mqtt_port,
+        settings.mqtt_tls,
+    )
+    await db.execute(
+        "INSERT INTO change_limits (id) VALUES (TRUE) ON CONFLICT (id) DO NOTHING"
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.connect()
+    await _check_schema()
+    await _ensure_singletons()
     await auth.bootstrap_user()
 
     stop = asyncio.Event()
@@ -99,6 +140,7 @@ for r in (
     suggestions.router,
     products.router,
     labels.router,
+    locations.router,
     activity.router,
     rules.router,
     users.router,

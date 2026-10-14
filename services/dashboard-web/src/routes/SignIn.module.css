@@ -105,3 +105,33 @@
   color: var(--ink-muted);
   font-size: var(--fs-xs);
 }
+
+/* ── Setup and Join reuse this card ─────────────────────────────────────── */
+
+.heading {
+  margin: 0;
+  font-size: var(--fs-card);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.lede {
+  margin: -8px 0 0;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.hint {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.link {
+  color: var(--ac);
+  font-size: var(--fs-xs);
+}

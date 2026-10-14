@@ -235,8 +235,15 @@ async def publish_guardrail(
     max_price: Decimal,
     auto_approve_pct: Decimal | None,
     set_by: str,
+    quiet: bool = False,
 ) -> bool:
-    """Push a SKU's policy to the agent, so it can clamp its own proposals."""
+    """Push a SKU's policy to the agent, so it can clamp its own proposals.
+
+    `quiet` suppresses the stream event. A category save republishes one
+    guardrail per SKU, and a stream event each would push dozens of messages
+    through subscriber queues that hold 200 — tripping every connected browser's
+    resync path. The caller emits one event describing the whole save instead.
+    """
     if max_price < min_price:
         raise ValueError("max_price must be at least min_price")
     now = datetime.now(timezone.utc)
@@ -260,7 +267,46 @@ async def publish_guardrail(
     delivered = await bus.publish(
         f"retail/guardrail/{product_id}", payload, qos=1, retain=True
     )
-    bus.emit("guardrail", product_id=product_id, set_by=set_by, delivered=delivered)
+    if not quiet:
+        bus.emit("guardrail", product_id=product_id, set_by=set_by, delivered=delivered)
+    return delivered
+
+
+async def publish_label_command(
+    *,
+    label_id: str,
+    command: str,
+    payload: dict[str, Any],
+    requested_by: str,
+) -> bool:
+    """A command aimed at one device, rather than a price aimed at a shelf.
+
+    **Not a contract topic.** `contracts/` defines five topics and none of them
+    is a device command; adding one needs all four signatures. This publishes to
+    `retail/label/{label_id}/{command}` so the console has somewhere to put
+    "blink" today, and the firmware may ignore it until the team agrees a shape.
+
+    `retain=False`, always. A retained command would re-fire on every reconnect
+    for the life of the device.
+
+    It lives here rather than calling `bus.publish` from a router so that every
+    outbound publish in this service still goes through one module. The claim at
+    the top of this file — that it is the only publisher of `retail/price/` —
+    stays true; it simply has a neighbour now.
+    """
+    now = datetime.now(timezone.utc)
+    body = {
+        "label_id": label_id,
+        "command": command,
+        **payload,
+        "requested_by": requested_by,
+        "ts": now.isoformat().replace("+00:00", "Z"),
+    }
+    delivered = await bus.publish(
+        f"retail/label/{label_id}/{command}", body, qos=1, retain=False
+    )
+    if not delivered:
+        log.info("label command %s for %s is queued, not published", command, label_id)
     return delivered
 
 

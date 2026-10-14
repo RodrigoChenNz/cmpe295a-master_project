@@ -38,7 +38,21 @@ _broker_state: dict[str, Any] = {
     "since": None,
     "error": None,
     "enabled": settings.mqtt_enabled,
+    # The bridge's last traffic in either direction. Nothing else tracks this,
+    # and `since` is the connect time, which answers a different question.
+    "last_message_at": None,
+    # What this process is *actually* connected to, which is not necessarily
+    # what store_settings says: a manager can edit the stored host and the
+    # running bridge keeps using its environment until it restarts. A card
+    # captioned "Broker" has to show the real one.
+    "host": settings.mqtt_host,
+    "port": settings.mqtt_port,
+    "tls": settings.mqtt_tls,
 }
+
+
+def _mark_traffic() -> None:
+    _broker_state["last_message_at"] = datetime.now(timezone.utc).isoformat()
 
 
 def broker_state() -> dict[str, Any]:
@@ -102,6 +116,7 @@ async def publish(topic: str, payload: dict, *, qos: int = 1, retain: bool = Fal
         return False
     try:
         await _client.publish(topic, body, qos=qos, retain=retain)
+        _mark_traffic()
         return True
     except Exception as exc:  # noqa: BLE001 - any broker error means "queue it"
         log.warning("publish to %s failed (%s); queued", topic, exc)
@@ -166,10 +181,15 @@ async def run(stop: asyncio.Event) -> None:
     backoff = 1.0
     while not stop.is_set():
         try:
+            # TLS is wired rather than merely stored: a Settings switch that
+            # edits a column the bridge ignores would claim an encrypted link
+            # this service does not open.
+            tls_params = aiomqtt.TLSParameters() if settings.mqtt_tls else None
             async with aiomqtt.Client(
                 hostname=settings.mqtt_host,
                 port=settings.mqtt_port,
                 identifier=settings.mqtt_client_id,
+                tls_params=tls_params,
             ) as client:
                 _client = client
                 backoff = 1.0
@@ -188,6 +208,7 @@ async def run(stop: asyncio.Event) -> None:
                 async for message in client.messages:
                     if stop.is_set():
                         break
+                    _mark_traffic()
                     await ingest.handle(str(message.topic), message.payload)
 
         except asyncio.CancelledError:

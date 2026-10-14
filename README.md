@@ -39,20 +39,40 @@ brew install uv && uv python install 3.11
 Then, from a clean clone:
 
 ```bash
-make up          # mosquitto, postgres, dashboard-api, dashboard-web
-make fake        # stand in for Layers 1-4, in another terminal
+make up          # the real system, on an empty database — nothing fake
+make demo        # sample catalogue + fake publisher standing in for Layers 1-4
+make fresh       # wipe the real database and start over from first-run setup
 make help        # everything else
 ```
 
-Then open <http://localhost:5173> and sign in. `make up` writes `.env` from
-`.env.example` if you have not already; the account to sign in as, and its
-password, are named in there.
+Then open <http://localhost:5173>.
 
-`make fake` is what makes the console *live*: it publishes proposals and
-explanations on the real contract topics and reports label sightings. Without
-it nothing fills the review queue and every label ages to offline within fifteen
-minutes — which is the honest consequence of Layers 1-4 not existing yet rather
-than a bug, and the Dashboard says so in those words.
+**`make up` has no sample or emulated data.** On the very first run the
+database is empty and the console asks you to **create the first account**.
+That account is the **Super admin**: it can do everything a manager can, and it
+is the only role that can grant or remove the manager role. Everyone else joins
+through an invite link from the Users screen.
+
+**Then set up the store, in this order:**
+1. Name the layout's levels on Locations (Zone › Aisle › Bay by default, or add Floor on top).
+2. Add locations.
+3. Add products. This isn't possible until step 1 is done.
+4. Link the products to locations.
+
+The Dashboard keeps a checklist until every step is done. [COMMANDS.md](COMMANDS.md) has the details.
+
+**What you add is kept.** `make down`, `make up` and `make restart` never touch
+the database volume. Only `make fresh` (just the real database) and `make nuke`
+(everything) delete data.
+
+**`make demo`** (same as `make up DEMO=1`) loads the design prototype's sample
+catalogue and runs `tools/fake_publisher.py` as a container. The publisher sends
+proposals and explanations on the real contract topics and reports label
+sightings, which keeps the console *live*. The demo database has its own volume,
+so you can switch between the two modes without `make nuke`, and sample rows
+never get into the real database. `make fake` follows the publisher's output.
+Sign in to the demo with the account named in `.env` (`make up` creates `.env`
+from `.env.example`). `make fresh-demo` resets the demo to its seed.
 
 `make tap` watches the MQTT bus; `make psql` opens a shell on the database.
 
@@ -109,8 +129,15 @@ simulator → stub agent ──proposal──▶ dashboard-api ──▶ inside 
 No RL, no SHAP, no Prophet, no real hardware. Those swap in afterwards, one at a time, without
 touching anyone else's code.
 
-**Branches:** `feat/<service>-<topic>`, e.g. `feat/web-mqtt-bridge`. Small PRs, one service each,
-reviewed by one teammate. A PR touching `contracts/` needs all four.
+**Branches and PRs:**
+- Work branches are named `<type>/<initials>/<short-name>`, e.g. `feature/rc/layout-levels`.
+  They are cut from `dev` and merged back into it through small PRs, reviewed by one teammate.
+- Each week `dev` is promoted to `stage` for integration testing, and a verified `stage` is
+  promoted to `main`, which is what we demo and submit.
+- A PR touching `contracts/` needs all four of us.
+
+The full workflow is in [CONTRIBUTING.md](CONTRIBUTING.md): naming, commits, reviews,
+promotions and hotfixes.
 
 **Weekly integration:** everyone merged, `make up`, `make smoke`. If it's red, that's the agenda.
 

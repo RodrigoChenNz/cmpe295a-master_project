@@ -12,7 +12,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { NAV_ICON } from '../lib/navIcons';
-import { clock, plural, relative } from '../lib/format';
+import { clock, isManagerRole, plural, relative, ROLE_LABEL } from '../lib/format';
 import { useClock, useDismiss, useStream } from '../lib/useStream';
 import type { Meta, StreamEvent, User } from '../lib/types';
 import { Button, Icon } from './ui';
@@ -162,6 +162,9 @@ export function AppShell({
       event.type === 'suggestions' ||
       event.type === 'expired' ||
       event.type === 'labels' ||
+      // The setup banner and the unlinked-products count live in meta too.
+      event.type === 'locations' ||
+      event.type === 'products' ||
       event.type === 'hello'
     ) {
       reloadMeta();
@@ -227,7 +230,10 @@ export function AppShell({
 
                 <div className={s.headerRight}>
                   {chrome.actions}
-                  <span className={s.headerDivider} aria-hidden="true" />
+                  {/* Only when there is something to separate. Most screens put
+                      their actions in their own toolbar, and a rule dividing
+                      nothing from the store name is just a stray hairline. */}
+                  {chrome.actions && <span className={s.headerDivider} aria-hidden="true" />}
                   <span className={s.store}>
                     <span className={s.storeName}>{meta?.store?.store_name ?? 'SJSU Market'}</span>
                     <span className={s.storeSep}>·</span>
@@ -239,6 +245,9 @@ export function AppShell({
             </header>
 
             {brokerDown && <BrokerBanner meta={meta!} />}
+            {meta && !meta.layout.configured && !location.pathname.startsWith('/locations') && (
+              <SetupBanner canSetUp={isManagerRole(user.role)} />
+            )}
             {meta?.sample_data && <SampleBanner note={meta.sample_data.note} />}
           </div>
 
@@ -400,7 +409,9 @@ function SideNav({
 }
 
 function roleLabel(role: User['role']): string {
-  return role === 'manager' ? 'Store manager' : role === 'staff' ? 'Store staff' : 'Viewer';
+  // One map, shared with Users and the permission matrix, so the words the
+  // console uses for a role cannot drift between screens.
+  return ROLE_LABEL[role] ?? role;
 }
 
 /* ── Banners ──────────────────────────────────────────────────────────── */
@@ -428,6 +439,29 @@ function BrokerBanner({ meta }: { meta: Meta }) {
           Broker settings
         </Button>
       </span>
+    </div>
+  );
+}
+
+/** A new store: the layout's levels come before anything else, and products
+ *  cannot be added until they exist. Not dismissible, because it describes a
+ *  requirement rather than a notice. Hidden on Locations, which is where it
+ *  points and which shows the setup itself. */
+function SetupBanner({ canSetUp }: { canSetUp: boolean }) {
+  const navigate = useNavigate();
+  return (
+    <div className={s.setupBanner} role="status">
+      <span className={s.setupTag}>Setup</span>
+      <span className={s.setupText}>
+        {canSetUp
+          ? 'Set up your store layout — its levels, such as Zone › Aisle › Bay — before adding locations and products.'
+          : 'A manager is still setting up this store’s layout. Products can be added once that is done.'}
+      </span>
+      {canSetUp && (
+        <Button size="sm" onClick={() => navigate('/locations')}>
+          Set up layout
+        </Button>
+      )}
     </div>
   );
 }

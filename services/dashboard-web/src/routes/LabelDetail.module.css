@@ -1,0 +1,273 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 20px;
+  align-items: start;
+}
+
+.mainCol,
+.sideCol {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: var(--fs-card);
+}
+
+.cardHead {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cardMeta {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+
+/* ── The live label ───────────────────────────────────────────────────── */
+
+.live {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.liveHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.previewRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+
+.noRender {
+  margin: 0;
+  flex: 1 1 260px;
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.meta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: var(--fs-body);
+  min-width: 210px;
+  flex: 1 1 210px;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: baseline;
+}
+
+.metaKey {
+  color: var(--ink-2);
+  flex: none;
+}
+/* The marker says there is something to hover for, which is the only honest
+ * way to attach "this is a timeout, not an acknowledgement" to a one-word
+ * field label. */
+.metaHintMark {
+  color: var(--disabled);
+  cursor: help;
+}
+
+.metaValue {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.link {
+  color: var(--ac);
+  font-weight: 600;
+}
+.none {
+  color: var(--disabled);
+  font-weight: 400;
+}
+
+.actions {
+  display: flex;
+  gap: 9px;
+  padding-top: 16px;
+  border-top: 1px solid var(--divider);
+  flex-wrap: wrap;
+}
+.unpairBtn:hover:not(:disabled) {
+  border-color: var(--red-border-soft);
+  color: var(--red);
+  background: var(--red-surface);
+}
+
+/* ── Connection history ───────────────────────────────────────────────── */
+
+.history {
+  overflow: hidden;
+}
+
+.empty {
+  margin: 0;
+  padding: 20px 18px;
+  font-size: var(--fs-body);
+  color: var(--ink-muted);
+}
+
+/* Headless: three columns whose meaning is obvious from their content, and a
+ * header row would cost more than it explains. */
+.histTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+.histTable td {
+  border-bottom: 1px solid var(--divider);
+  vertical-align: middle;
+}
+.histTable tr:last-child td {
+  border-bottom: none;
+}
+
+.histTime {
+  padding: 11px 0 11px 18px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  width: 1%;
+}
+.histEvent {
+  padding: 11px 12px;
+  font-size: var(--fs-body);
+}
+.histTag {
+  padding: 11px 18px 11px 12px;
+  text-align: right;
+  width: 1%;
+}
+
+/* ── Device ───────────────────────────────────────────────────────────── */
+
+.device {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.deviceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.cellValue {
+  font-size: var(--fs-card);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  font-weight: 500;
+}
+.mono[data-bad] {
+  color: var(--red);
+}
+
+/* ── Reassign ─────────────────────────────────────────────────────────── */
+
+.reassign {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reassignNote {
+  margin: 0 0 4px;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.fieldLabel {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.select,
+.monoInput {
+  height: 38px;
+  font-size: var(--fs-card);
+}
+.monoInput {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.fieldHint {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+.reassignBtn {
+  margin-top: 6px;
+  height: 38px;
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .deviceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .live {
+    padding: 16px;
+  }
+}
+
+/* The location path under a position code. */
+.cellSub {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}

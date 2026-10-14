@@ -1,0 +1,191 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.row3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.input,
+.mono {
+  height: 38px;
+  font-size: var(--fs-card);
+}
+
+/* Mono for the fields whose contents are machine values: the article code, the
+ * barcode, the money, the count. */
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  letter-spacing: 0.02em;
+}
+
+.priceInput {
+  font-weight: 600;
+}
+
+.field [data-invalid] {
+  border-color: var(--red);
+}
+
+.fieldHint {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+.error {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--red);
+}
+
+/* What a staff user sees where the price input would be. An em dash, because
+ * null is an em dash everywhere in this app, never a 0 or a greyed-out guess. */
+.readOnlyValue {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 11px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-card);
+  color: var(--disabled);
+  background: var(--subtle);
+  border: 1px dashed var(--border-input);
+  border-radius: var(--r);
+}
+
+/* ── The shelf display block ──────────────────────────────────────────── */
+
+.shelfBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--hover);
+  border: 1px solid var(--divider);
+  border-radius: var(--r);
+}
+
+.shelfHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shelfLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.kindSwitch {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: var(--r);
+}
+
+.kindOption {
+  height: 24px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--r);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.kindOption[data-active] {
+  background: var(--ink);
+  color: var(--subtle);
+}
+
+/* Amber from fifteen characters, before the cap rather than at it — a warning
+ * that only fires once the damage is done is not a warning. */
+.counter {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.counter[data-warn] {
+  color: var(--amber-text-alt);
+  font-weight: 600;
+}
+
+.displayInput {
+  height: 38px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-card);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Footer and errors ────────────────────────────────────────────────── */
+
+.hint {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--ink-muted);
+  text-align: left;
+}
+
+.formError {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--red-surface);
+  border: 1px solid var(--red-border);
+  border-radius: var(--r);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--red-deep);
+}
+
+.discardBody {
+  margin: 0;
+}
+
+@media (max-width: 620px) {
+  .row2,
+  .row3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
