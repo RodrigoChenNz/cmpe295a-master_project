@@ -1,0 +1,17 @@
+/* The pre-session frame. A single breathing mark rather than a spinner: this is
+ * one request to /api/auth/me and it is usually over before the eye lands. */
+.boot {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--page);
+}
+
+.bootMark {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r);
+  background: var(--ink);
+  animation: shimmer 1.4s ease-in-out infinite;
+}

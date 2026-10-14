@@ -1,0 +1,212 @@
+.wrap {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 100%;
+}
+
+/* The hardware tag. Mono, because a part number is a machine value, and
+ * bordered rather than filled so it reads as an annotation on the preview
+ * instead of a status about it. */
+.hardware {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--border-card);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #67645c;
+}
+
+/* The character counter turns red past sixteen, because past sixteen the
+ * firmware silently drops the rest and the label would lie. */
+.countOver {
+  color: #c33c2e;
+  font-weight: 600;
+}
+
+.publishedAt {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+
+/* ── 16x2 LCD ─────────────────────────────────────────────────────────────
+ * Green-on-near-black with a restrained glow: the phosphor of a character LCD,
+ * not a CRT. The inset shadow is the recessed glass behind the bezel. No
+ * scanlines, no curvature, no bloom — the concept is "character cell", and
+ * every one of those would be costume. */
+.lcd {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  background: #0b1411;
+  border: 1px solid #23342c;
+  border-radius: var(--r);
+  box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.65);
+}
+
+.lcdRow {
+  display: flex;
+  gap: 1px;
+}
+
+/* One cell. The faint background is the unlit dot-matrix ground, which is what
+ * makes an unused cell visibly a cell rather than empty space — and therefore
+ * what makes "16 characters" legible as a constraint. */
+.lcdCell {
+  width: var(--cell-w);
+  height: var(--cell-h);
+  line-height: var(--cell-h);
+  font-family: var(--font-mono);
+  font-size: var(--cell-fs);
+  text-align: center;
+  color: #8df2ae;
+  background: rgba(141, 242, 174, 0.05);
+  border-radius: 1px;
+  text-shadow: 0 0 7px rgba(141, 242, 174, 0.5);
+  /* Tabular, so a price and a space occupy the same cell width — the entire
+   * point of a character display. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── E-ink ────────────────────────────────────────────────────────────────
+ * Warm paper, near-black ink, and the dark plastic bezel the E213 ships in.
+ * Sans for the product name because it is prose a person wrote; mono for the
+ * brand, unit price and slot code because those are machine values. */
+.einkBezel {
+  /* flex-start, not the column's default stretch: the bezel is the physical
+   * frame around a 250x122 panel and must hug it, not grow to the card. */
+  align-self: flex-start;
+  display: inline-flex;
+  padding: calc(4px * var(--eink-scale)) calc(9px * var(--eink-scale));
+  background: #2a2a28;
+  border-radius: calc(6px * var(--eink-scale));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.einkPanel {
+  width: calc(250px * var(--eink-scale));
+  height: calc(122px * var(--eink-scale));
+  padding: calc(8px * var(--eink-scale)) calc(11px * var(--eink-scale));
+  background: #e7e5dc;
+  border-radius: 2px;
+  color: #141412;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.einkTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(8px * var(--eink-scale));
+  min-width: 0;
+}
+
+.einkBrand {
+  font-family: var(--font-mono);
+  font-size: calc(10px * var(--eink-scale));
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Inverted, because e-ink has no colour to spend on emphasis — black fill is
+ * the only "highlight" the panel physically has. */
+.einkPromo {
+  flex: none;
+  padding: calc(1.5px * var(--eink-scale)) calc(5px * var(--eink-scale));
+  background: #141412;
+  color: #e7e5dc;
+  font-family: var(--font-mono);
+  font-size: calc(10px * var(--eink-scale));
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.einkName {
+  font-size: calc(17px * var(--eink-scale));
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.005em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.einkBottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(8px * var(--eink-scale));
+}
+
+.einkPriceGroup {
+  display: flex;
+  align-items: baseline;
+  gap: calc(5px * var(--eink-scale));
+  min-width: 0;
+}
+
+.einkPrice {
+  font-size: calc(34px * var(--eink-scale));
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.einkWas {
+  font-family: var(--font-mono);
+  font-size: calc(10px * var(--eink-scale));
+  text-decoration: line-through;
+  white-space: nowrap;
+}
+
+.einkMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: calc(10px * var(--eink-scale));
+  white-space: nowrap;
+}
+
+.einkSlot {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}

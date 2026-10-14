@@ -1,0 +1,188 @@
+/* Document-level styling and the primitives every screen reuses.
+ *
+ * Deliberately small. Anything that belongs to one component lives in that
+ * component's .module.css; this file is only for the page plane, the form
+ * controls (which cannot be scoped usefully), and the handful of utility
+ * classes the handoff repeats on every screen.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* The window scrolls. There are no inner page scroll containers except the
+   * Products table and the nav's top block, both of which say so locally. */
+  background: var(--page);
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-card);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--ink);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--ink-body);
+  text-decoration: underline;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+}
+
+input,
+select,
+button,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* A visible focus ring on keyboard navigation only. Removing the outline
+ * outright is the single most common way a design like this becomes unusable
+ * without a mouse, so it is replaced rather than deleted. */
+:focus-visible {
+  outline: 2px solid var(--ac);
+  outline-offset: 2px;
+}
+
+/* ── Form controls ────────────────────────────────────────────────────── */
+
+.field {
+  height: 34px;
+  padding: 0 11px;
+  font-size: var(--fs-body);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border-input);
+  border-radius: var(--r);
+  outline: none;
+}
+.field:focus {
+  border-color: var(--ac);
+}
+.field::placeholder {
+  color: var(--disabled);
+}
+
+select.field {
+  cursor: pointer;
+  /* Native select arrows differ per platform; padding leaves room for all. */
+  padding-right: 8px;
+}
+
+input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--ac);
+  cursor: pointer;
+}
+
+/* ── Mono label ───────────────────────────────────────────────────────────
+ * The uppercase caption that sits above a value or beside a filter group.
+ * Mono because it labels a machine-emitted value, and letter-spaced because at
+ * 10px uppercase it is unreadable without it. */
+.monoLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-label);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* Money and counts, so columns line up. Used wherever a number sits in a
+ * column or above another number. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────── */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--rl);
+}
+
+/* ── Screen-reader-only text ──────────────────────────────────────────── */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Animations ───────────────────────────────────────────────────────── */
+
+@keyframes islandIn {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes islandOut {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes shimmer {
+  0% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+
+/* Hide a scrollbar without losing the scrolling. Used by the nav's top block,
+ * which scrolls when the window is short. */
+.hideScrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hideScrollbar::-webkit-scrollbar {
+  display: none;
+}

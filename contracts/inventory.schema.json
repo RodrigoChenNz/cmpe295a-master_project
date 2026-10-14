@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sjsu.edu/cmpe295/contracts/inventory.schema.json",
+  "title": "InventoryRisk",
+  "description": "Published by the forecaster to retail/inventory/{product_id} on each forecast cycle. QoS 0, retained. Feeds both the dashboard dead-stock alert panel and the pricing agent's reward function.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["product_id", "dead_stock_risk", "predicted_sellby", "model_version", "ts"],
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "pattern": "^SKU-[0-9]{3,}$"
+    },
+    "dead_stock_risk": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Probability the SKU fails to clear before its sell-by horizon. 0 = no risk, 1 = certain dead stock."
+    },
+    "predicted_sellby": {
+      "type": "string",
+      "format": "date",
+      "description": "Forecast date the current stock clears at present velocity. YYYY-MM-DD."
+    },
+    "units_on_hand": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional. Current inventory level if known to the forecaster."
+    },
+    "model_version": {
+      "type": "string",
+      "description": "e.g. 'stub-0.1', 'prophet-2026-10-01', 'lstm-v2'. Required so forecaster comparisons in the evaluation chapter are attributable."
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "examples": [
+    {
+      "product_id": "SKU-001",
+      "dead_stock_risk": 0.73,
+      "predicted_sellby": "2026-10-04",
+      "units_on_hand": 142,
+      "model_version": "stub-0.1",
+      "ts": "2026-09-17T10:00:00Z"
+    }
+  ]
+}

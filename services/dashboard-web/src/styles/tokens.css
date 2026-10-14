@@ -1,0 +1,154 @@
+/* ShelfIQ design tokens.
+ *
+ * Every value here is lifted from the design handoff
+ * (design_handoff_shelfiq/README.md, "Design Tokens"). Nothing in this file was
+ * chosen; it is a transcription. If a component wants a colour that is not
+ * here, the answer is to add it here with the handoff section it came from, not
+ * to inline a hex.
+ *
+ * The neutrals are warm on purpose — this is paper and ink, not grey-blue
+ * chrome — and they are ordered dark to light so that picking "one step
+ * lighter" is reading down the list rather than guessing.
+ */
+
+:root {
+  /* ── Radii ─────────────────────────────────────────────────────────────
+   * --r  controls: buttons, inputs, pills, filter rows, nav items
+   * --rl cards, panels, menus
+   * The prototype also supported square (0/0), soft (3/5) and pill (999/22);
+   * `rounded` is the shipped default. */
+  --r: 6px;
+  --rl: 10px;
+
+  /* ── Accent ────────────────────────────────────────────────────────────
+   * Default is the ink itself, which is why primary buttons read as printed
+   * rather than branded. The prototype's alternates were #2f4a3a, #6b3fa0
+   * and #7a2e1f; swapping --ac is the whole theme mechanism. */
+  --ac: #17150e;
+
+  /* ── Warm neutrals, dark to light ──────────────────────────────────── */
+  --ink: #17150e;          /* primary text, nav background, primary button */
+  --ink-strong: #2a281f;   /* strong text, field labels */
+  --ink-body: #3a372c;     /* body-strong, table body */
+  --ink-2: #5c584a;        /* secondary text */
+  --ink-muted: #6f6a57;    /* muted text, table headings */
+  --nav-muted: #9a9484;    /* nav labels at rest, group headings */
+  --disabled: #aaa390;
+  --border-input: #b9b197; /* input borders, disabled chevrons */
+  --border-card: #cbc4ae;  /* card and panel borders */
+  --divider: #dfdacb;      /* dividers, row borders */
+  --track: #e2ddcf;        /* bar track */
+  --page: #e8e4d8;         /* page background, secondary-button hover */
+  --hover: #eeeade;        /* hover, active filter row */
+  --row-selected: #f1ede0;
+  --row-hover: #f3efe3;
+  --subtle: #f7f4ea;       /* subtle panel, pagination bar, text on dark */
+  --surface: #fbf9f2;      /* card surface */
+  --photo-slot: #f2eee2;   /* product photo placeholder tile */
+
+  /* Shelf labels row tints. The only two colours in the handoff with no
+     existing token — every other value on those screens maps to one above. */
+  --row-failed: #fdf7f6;   /* its last push did not confirm */
+  --row-offline: #fafafa;  /* not seen inside the stale window */
+
+  /* Nav, which is its own small scale because it sits on the dark plane */
+  --nav-bg: #17150e;
+  --nav-hover: #252318;
+  --nav-divider: #33302a;
+  --nav-fg: #f7f4ea;
+  --nav-collapse: #a6a191;
+
+  /* ── Status ────────────────────────────────────────────────────────────
+   * Each is a triple: the line colour, the darker text colour for use on the
+   * tint, and the tint itself. A value never wears its status colour as text
+   * on the page background — only inside its own pill. */
+  --green: #1c7a46;
+  --green-text: #1c5e36;
+  --green-tint: #e0ecdf;
+  --amber: #c28a12;
+  --amber-text: #7a4f12;
+  --amber-text-alt: #8c6008;
+  --amber-tint: #f3e6d0;
+  --red: #a5321f;
+  --red-bar: #c9503c;
+  --red-tint: #f5dfda;
+  --red-deep: #7e2717;
+  --red-border: #efcdc7;
+  --red-border-soft: #e6c6bf;
+  --red-surface: #fbecea;
+
+  /* ── Category pill tints ──────────────────────────────────────────────
+   * Paired bg/text, each pair contrast-checked as a unit. The fallback is the
+   * neutral hover tint, so an unknown category reads as unclassified rather
+   * than borrowing another category's meaning. */
+  --cat-dairy-bg: #e3e9f2;        --cat-dairy-fg: #2f4d74;
+  --cat-bakery-bg: #f3e6d0;       --cat-bakery-fg: #7a4f12;
+  --cat-produce-bg: #e0ecdf;      --cat-produce-fg: #2d6233;
+  --cat-pantry-bg: #ebe3f0;       --cat-pantry-fg: #5b3d72;
+  --cat-seafood-bg: #dcecea;      --cat-seafood-fg: #22605b;
+  --cat-electronics-bg: #e4e4f2;  --cat-electronics-fg: #3d3f7a;
+  --cat-clothing-bg: #f2e1e1;     --cat-clothing-fg: #7f3434;
+  --cat-fallback-bg: #eeeade;     --cat-fallback-fg: #3a372c;
+
+  /* ── Typography ───────────────────────────────────────────────────────
+   * Two registers, and the split is a rule rather than a preference:
+   *   mono — machine-emitted values: price, SKU, label id, timestamps,
+   *          reason tags, counts, and every uppercase button label
+   *   sans — everything a person wrote: names, headings, prose, guidance
+   * Prose is never set in mono. */
+  --font-sans: 'Space Grotesk', -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --fs-title: 26px;     /* page H1 */
+  --fs-panel-lg: 20px;  /* "What needs your attention" */
+  --fs-panel: 15px;     /* panel titles */
+  --fs-card: 14px;      /* card titles, table cells, nav items */
+  --fs-body: 13px;
+  --fs-small: 12.5px;
+  --fs-xs: 12px;
+  --fs-mono-label: 10px;  /* uppercase mono labels */
+
+  /* ── Shadows ───────────────────────────────────────────────────────── */
+  --shadow-menu: 0 8px 22px rgba(23, 21, 14, 0.16);
+  --shadow-acct: 0 8px 22px rgba(23, 21, 14, 0.22);
+  --shadow-island: 0 8px 24px rgba(23, 21, 14, 0.22);
+  --backdrop: rgba(23, 21, 14, 0.42);
+
+  /* ── Layout ───────────────────────────────────────────────────────────
+   * The header height is a token because three things depend on it being the
+   * same number: the header itself, the Products toolbar's sticky offset, and
+   * the island's bottom inset. */
+  --nav-w: 232px;
+  --nav-w-collapsed: 64px;
+  --header-h: 76px;
+  --page-pad: 24px;
+  --page-max: 1488px;
+  --content-max: 1440px;
+
+  /* ── Motion ───────────────────────────────────────────────────────────
+   * One easing for layout, one for the island's entrance and exit. Durations
+   * are tokens so that `prefers-reduced-motion` can zero them in one place. */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-island: cubic-bezier(0.2, 0.9, 0.3, 1);
+  --ease-out-island: cubic-bezier(0.7, 0.1, 0.8, 0.2);
+  --t-nav: 200ms;
+  --t-label: 130ms;
+  --t-island: 400ms;
+}
+
+/* Reduced motion zeroes the durations rather than removing the transitions,
+ * so every component keeps its final state without each having to know. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-nav: 0ms;
+    --t-label: 0ms;
+    --t-island: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

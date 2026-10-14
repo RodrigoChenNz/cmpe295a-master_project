@@ -1,0 +1,252 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1000px;
+}
+
+.card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* The border carries the alarm, like the Shelf labels network card. */
+.card[data-down] {
+  border-color: var(--red-border);
+}
+
+.cardTitle {
+  font-size: var(--fs-panel);
+}
+.cardSub {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 82ch;
+}
+
+.stale {
+  margin: 0;
+  padding: 11px 14px;
+  background: var(--amber-tint);
+  border: 1px solid #e6d7b0;
+  border-radius: var(--r);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--amber-text);
+}
+
+.netHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.grid3 {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 18px;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.dirtyMark {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  flex: none;
+}
+
+.fieldHint {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.field .field,
+.grid2 input,
+.grid3 input {
+  height: 38px;
+  font-size: var(--fs-card);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  letter-spacing: 0.02em;
+}
+
+.testCell {
+  display: flex;
+  align-items: flex-end;
+  height: 38px;
+}
+.testCell > button {
+  height: 38px;
+  width: 100%;
+}
+
+.tlsRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+.tlsNote {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+/* The probe answers a question, so it reads as an answer rather than an alert:
+ * "not reachable" is a true result, not an error in the console. */
+.probe {
+  margin: 0;
+  padding: 11px 13px;
+  background: var(--red-surface);
+  border: 1px solid var(--red-border);
+  border-radius: var(--r);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--red-deep);
+}
+.probe[data-ok] {
+  background: var(--green-tint);
+  border-color: #c9e4d3;
+  color: var(--green-text);
+}
+
+/* Stored intent differs from what the bridge is running. */
+.mismatch {
+  margin: 0;
+  padding: 11px 13px;
+  background: var(--amber-tint);
+  border: 1px solid #e6d7b0;
+  border-radius: var(--r);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--amber-text);
+}
+
+.netFacts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--divider);
+}
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.factValue {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+
+.suffixBox {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 11px;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-input);
+  border-radius: var(--r);
+}
+.suffixBox:focus-within {
+  border-color: var(--ac);
+}
+.suffixInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: var(--fs-card);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.suffix {
+  font-size: var(--fs-body);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.foot {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  max-width: 84ch;
+}
+
+@media (max-width: 760px) {
+  .grid2,
+  .grid3,
+  .netFacts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .card {
+    padding: 16px;
+  }
+}
+
+/* The layout's levels, shown here and edited on Locations. */
+.layoutRow {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--divider);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.layoutLabel {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.layoutValue {
+  flex: 1 1 200px;
+  font-size: var(--fs-body);
+  color: var(--ink);
+}
+.layoutLink {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: underline;
+}

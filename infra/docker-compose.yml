@@ -1,0 +1,109 @@
+# Integration harness for the whole system.
+#
+#   make up        start everything
+#   make logs      follow
+#   make down      stop and keep data
+#   make nuke      stop and drop volumes
+#
+# Rule: a clean clone must come up with one command and no manual setup step.
+# If you add a service, add it here — never to a personal script.
+#
+# Services are added as they are built (see the build order in the root README).
+# mosquitto + postgres are step 1; dashboard-api and dashboard-web are commented
+# out below and get uncommented when their Dockerfiles land.
+
+name: retail-pricing
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: rp-mosquitto
+    ports:
+      - "1883:1883"   # MQTT
+      - "9101:9001"   # MQTT over WebSocket (browser clients, MQTT Explorer).
+                      # Host side is 9101, not 9001: 9001 collides with Penpot
+                      # and other common local stacks. Container side stays 9001.
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/#' -C 1 -W 3 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: rp-postgres
+    environment:
+      POSTGRES_USER: retail
+      POSTGRES_PASSWORD: retail_dev_only
+      POSTGRES_DB: retail_pricing
+    ports:
+      - "5432:5432"
+    volumes:
+      # Applied in filename order on first start of an empty volume.
+      # 01 mirrors contracts/ and needs all four approvals to change.
+      # 02 is console-side only; see its header. The sample seed (03) is not
+      # mounted here: it belongs to docker-compose.demo.yml (`make demo`).
+      - ./postgres/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./postgres/02-shelfiq.sql:/docker-entrypoint-initdb.d/02-shelfiq.sql:ro
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retail -d retail_pricing"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dashboard-api:
+    build: ../services/dashboard-api
+    container_name: rp-api
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      DATABASE_URL: postgresql://retail:retail_dev_only@postgres:5432/retail_pricing
+      # No bootstrap account here: on an empty database the first person to
+      # open the console creates the super admin. The demo overlay adds one,
+      # because its seeded users have no passwords.
+      CORS_ORIGINS: http://localhost:5173
+      # Plain http locally. Any deployment must set this true.
+      SESSION_COOKIE_SECURE: "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      mosquitto: { condition: service_healthy }
+      postgres:  { condition: service_healthy }
+    restart: unless-stopped
+
+  dashboard-web:
+    build: ../services/dashboard-web
+    container_name: rp-web
+    environment:
+      # The browser resolves these, not the container, so they are localhost
+      # even though the API is reachable as `dashboard-api` on this network.
+      VITE_API_URL: http://localhost:8000
+      VITE_WS_URL: ws://localhost:8000/ws/stream
+    volumes:
+      # The source, bind-mounted, so the dev server actually hot reloads. The
+      # image COPYs src too, which is what makes it runnable standalone — but
+      # without this mount every edit needs a rebuild, and a container running
+      # a dev server against a frozen copy of the code is the worst of both.
+      - ../services/dashboard-web/src:/srv/src:ro
+      - ../services/dashboard-web/index.html:/srv/index.html:ro
+      - ../services/dashboard-web/public:/srv/public:ro
+      # Anonymous volume so the container keeps its own node_modules: the host
+      # may have none, or have them built for a different platform.
+      - /srv/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - dashboard-api
+    restart: unless-stopped
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
+  postgres-data:

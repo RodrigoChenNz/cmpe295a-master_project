@@ -1,0 +1,443 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 452px);
+  gap: 20px;
+  align-items: start;
+}
+
+.mainCol,
+.sideCol {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* ── Form ─────────────────────────────────────────────────────────────── */
+
+.form {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.input,
+.monoInput {
+  height: 38px;
+  font-size: var(--fs-card);
+}
+/* Mono for the fields whose contents are machine values: SKU, UPC, the display
+ * name the LCD renders, the band, the reason tag. */
+.monoInput {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.hint {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+/* ── Shelf display block ──────────────────────────────────────────────────
+ * Set apart on the subtle surface, because this is where a hardware limit
+ * becomes the user's problem and it should not read as one more text field. */
+
+.shelfBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 18px;
+  background: var(--subtle);
+  border: 1px solid #d8d2c1;
+  border-radius: var(--r);
+}
+
+.shelfHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.counter {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.counter[data-over] {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.shelfBlock .monoInput {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.shelfRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+  margin-top: 4px;
+}
+
+.shelfNote {
+  margin: 0;
+  flex: 1 1 220px;
+  min-width: 200px;
+  max-width: 44ch;
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+/* ── Policy ───────────────────────────────────────────────────────────── */
+
+.policy {
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--r);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.policyLegend {
+  padding: 0 8px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.checkRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--ink-body);
+  cursor: pointer;
+}
+.checkRow input {
+  margin-top: 3px;
+}
+
+.policyNote {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--divider);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--divider);
+}
+.policyWarn {
+  font-size: var(--fs-xs);
+  color: var(--amber-text);
+  line-height: 1.4;
+}
+
+/* ── Set-the-price card ───────────────────────────────────────────────── */
+
+.priceCard {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cardTitle {
+  font-size: var(--fs-card);
+}
+
+.priceLead {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 68ch;
+}
+
+.priceRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.priceField {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  flex: 0 1 140px;
+  min-width: 120px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--r);
+  background: var(--surface);
+  padding: 0 11px;
+  gap: 6px;
+}
+.priceField:focus-within {
+  border-color: var(--ac);
+}
+.currency {
+  font-size: var(--fs-card);
+  color: var(--ink-muted);
+}
+.priceInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: var(--fs-card);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.reasonField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 200px;
+  min-width: 180px;
+}
+.reasonField .monoInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.priceNote {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* ── Side column ──────────────────────────────────────────────────────── */
+
+.summary {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.summaryPrice {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.summaryWhen {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+
+.summaryList {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--divider);
+  font-size: var(--fs-body);
+}
+.summaryLabel {
+  color: var(--ink-2);
+  flex: none;
+}
+.summaryLabel[data-capitalise] {
+  text-transform: capitalize;
+}
+.summaryValue {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.rowNote {
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+
+.link {
+  color: var(--ac);
+  font-weight: 600;
+}
+
+.labelCard,
+.historyCard,
+.logCard,
+.fieldsCard {
+  overflow: hidden;
+}
+
+.cardHead {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cardMeta {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+
+.labelCard .summaryList,
+.fieldsCard .summaryList {
+  padding: 4px 18px 14px;
+}
+.labelCard .summaryRow:first-child,
+.fieldsCard .summaryRow:first-child {
+  border-top: none;
+}
+
+.noLabel {
+  margin: 0;
+  padding: 18px;
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.chartPad {
+  padding: 18px;
+}
+
+.logRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  border-bottom: 1px solid var(--hover);
+}
+.logRow:last-child {
+  border-bottom: none;
+}
+.logDate {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  flex: none;
+  width: 96px;
+}
+.logText {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-body);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.logWho {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.fieldsNote {
+  margin: 0;
+  padding: 0 18px 16px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* ── Narrow ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .grid3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .form,
+  .priceCard {
+    padding: 16px;
+  }
+  .logDate {
+    width: 74px;
+  }
+}
+
+/* "Change" / "Link" beside the location in the summary. */
+.rowAction {
+  border: none;
+  background: transparent;
+  padding: 2px 6px;
+  border-radius: var(--r);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: underline;
+  cursor: pointer;
+  flex: none;
+}
+.rowAction:hover {
+  background: var(--row-hover);
+  color: var(--ink);
+}

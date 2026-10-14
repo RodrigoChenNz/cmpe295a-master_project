@@ -1,0 +1,406 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 384px;
+  gap: 20px;
+  align-items: start;
+}
+
+.mainCol,
+.sideCol {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.sectionTitle {
+  font-size: var(--fs-card);
+}
+.subTitle {
+  font-size: var(--fs-body);
+  color: var(--ink-strong);
+  margin-bottom: 12px;
+}
+
+.explain,
+.history {
+  padding: 22px;
+}
+
+.explainHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.explainMeta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* Sans, at a comfortable measure. The explanation is the one thing on this
+ * screen that must not be hard to read, so it is never set in the mono
+ * register however "consistent" that would look. */
+.prose {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-strong);
+  max-width: 70ch;
+  text-wrap: pretty;
+}
+
+.composedNote {
+  margin: 0 0 18px;
+  padding: 10px 12px;
+  background: var(--subtle);
+  border-left: 2px solid var(--border-input);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--ink-muted);
+  max-width: 70ch;
+}
+
+/* The missing-explanation state. Amber, not red: it is a normal state, and
+ * dressing it as an error would teach people to ignore real errors. */
+.noExplanation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  background: var(--amber-tint);
+  border: 1px solid #e6d7b0;
+  border-radius: var(--r);
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--amber-text);
+  max-width: 70ch;
+}
+
+.shapBlock {
+  padding: 18px 0 4px;
+}
+
+.inputs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 0;
+}
+
+.input {
+  border: 1px solid #d8d2c1;
+  border-radius: var(--r);
+  padding: 13px 14px;
+  background: var(--subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.input[data-tone='bad'] {
+  border-color: var(--red-border);
+  background: var(--red-surface);
+}
+.inputValue {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.input[data-tone='bad'] .inputValue {
+  color: var(--red);
+}
+.inputNote {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  line-height: 1.35;
+}
+
+/* ── Decision panel ───────────────────────────────────────────────────── */
+
+.decide {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.prices {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.priceBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.priceOld {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  text-decoration: line-through;
+  font-variant-numeric: tabular-nums;
+}
+/* The proposed price is the largest machine value on the screen, and it wears
+ * the mono register because that is what it is. */
+.priceNew {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.arrow {
+  font-size: 18px;
+  color: var(--disabled);
+  padding-bottom: 4px;
+}
+.deltaPct {
+  margin-left: auto;
+  font-size: var(--fs-card);
+  font-weight: 600;
+  padding-bottom: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.deltaPct[data-dir='down'] { color: var(--green); }
+.deltaPct[data-dir='up']   { color: var(--ink-body); }
+
+.facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+}
+.fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  font-size: var(--fs-body);
+}
+.factLabel {
+  color: var(--ink-2);
+  flex: none;
+}
+.factValue {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  min-width: 0;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.labelFact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.noLabel {
+  font-weight: 400;
+  color: var(--ink-muted);
+  font-size: var(--fs-xs);
+}
+
+.bandWarn {
+  margin: 4px 0 8px;
+  padding: 10px 12px;
+  background: var(--amber-tint);
+  border-radius: var(--r);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--amber-text);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.previewLabel {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+/* ── Manual price ─────────────────────────────────────────────────────── */
+
+.manual {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.manualLabel {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.manualRow {
+  display: flex;
+  gap: 8px;
+}
+.manualField {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--r);
+  background: var(--surface);
+  padding: 0 11px;
+  gap: 6px;
+  min-width: 0;
+}
+.manualField:focus-within {
+  border-color: var(--ac);
+}
+.currency {
+  font-size: var(--fs-card);
+  color: var(--ink-muted);
+}
+.manualInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-card);
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+.manualNote {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+/* Shown before the override is clicked, because afterwards is too late. */
+.overrideWarn {
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--amber-text);
+  background: var(--amber-tint);
+  padding: 8px 10px;
+  border-radius: var(--r);
+}
+
+.buttons {
+  display: flex;
+  gap: 9px;
+}
+.rejectBtn {
+  flex: none;
+  height: 40px;
+}
+.rejectBtn:hover:not(:disabled) {
+  border-color: var(--red-border-soft);
+  color: var(--red);
+  background: var(--red-surface);
+}
+.approveBtn {
+  flex: 1;
+  height: 40px;
+}
+
+.readOnly {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+/* ── Earlier decisions ────────────────────────────────────────────────── */
+
+.earlier {
+  overflow: hidden;
+}
+.cardHead {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border-card);
+}
+.cardTitle {
+  font-size: var(--fs-card);
+}
+.earlierEmpty {
+  padding: 20px 18px;
+  font-size: var(--fs-body);
+  color: var(--ink-muted);
+}
+.earlierRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  border-bottom: 1px solid var(--hover);
+}
+.earlierRow:last-child {
+  border-bottom: none;
+}
+.earlierDate {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  flex: none;
+  width: 84px;
+}
+.earlierText {
+  font-size: var(--fs-body);
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.earlierWho {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.rulesNote {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* ── Narrow ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The decision panel comes first on a narrow window: the explanation is the
+   * hero, but a manager who has already read it should not scroll past the
+   * whole thing to act. */
+  .sideCol {
+    order: -1;
+  }
+  .inputs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .explain,
+  .history,
+  .decide {
+    padding: 16px;
+  }
+}

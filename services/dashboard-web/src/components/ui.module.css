@@ -1,0 +1,1114 @@
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: var(--r);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter 120ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* `aria-disabled` rather than `disabled`: the button looks unavailable but stays
+ * focusable and clickable, so clicking it can explain *why* it is unavailable.
+ * A truly disabled button cannot be focused and tells a keyboard user nothing —
+ * which in a form means the validation messages are unreachable. Used by the
+ * Add product modal, whose errors appear on the first submit attempt.
+ *
+ * `.primary[aria-disabled]` is one class plus one attribute, so it beats
+ * `.primary` on specificity and does not depend on stylesheet order. */
+.btn[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+.primary[aria-disabled='true'] {
+  background: var(--disabled);
+  border-color: var(--disabled);
+}
+.primary[aria-disabled='true']:hover {
+  filter: none;
+}
+
+.md {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 11px;
+}
+.sm {
+  height: 31px;
+  padding: 0 11px;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+}
+
+/* The height of a form control (`.field` in base.css) and of `.moreBtn`, for a
+ * button that sits in a row with them — the Products toolbar's "+ Add product".
+ *
+ * It lives here rather than in Products.module.css on purpose: `.md` and a
+ * route-local override would be the same specificity, so the winner would be
+ * whichever stylesheet the bundler emitted last, which differs between the dev
+ * server and a production build. Declared after `.md` in this same file, it
+ * wins by source order, deterministically. */
+.toolbar {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 11px;
+  gap: 6px;
+}
+
+.primary {
+  background: var(--ac);
+  color: var(--nav-fg);
+  border: 1px solid var(--ink);
+}
+.primary:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+.secondary:hover:not(:disabled) {
+  background: var(--page);
+}
+
+/* For a tertiary action inside a card, where a bordered button would add a
+ * third rule to a panel that already has two. */
+.ghost {
+  background: transparent;
+  color: var(--ink-body);
+  border: 1px solid var(--border-input);
+}
+.ghost:hover:not(:disabled) {
+  background: var(--page);
+}
+
+.danger {
+  background: var(--red);
+  color: var(--surface);
+  border: 1px solid transparent;
+}
+.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  box-sizing: border-box;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+/* ── Status tag / chip ────────────────────────────────────────────────────
+ * Four tones. Each sets three variables and the two shapes below read them, so
+ * a tag and a chip of the same status can never drift apart. */
+
+.tone_good {
+  --st-bg: var(--green-tint);
+  --st-fg: var(--green-text);
+  --st-bd: #c9e4d3;
+}
+.tone_wait {
+  --st-bg: var(--amber-tint);
+  --st-fg: var(--amber-text-alt);
+  --st-bd: #f0dfba;
+}
+.tone_bad {
+  --st-bg: var(--red-surface);
+  --st-fg: var(--red);
+  --st-bd: var(--red-border);
+}
+.tone_none {
+  --st-bg: var(--hover);
+  --st-fg: #63605a;
+  --st-bd: var(--divider);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: stretch;
+  height: 21px;
+  border: 1px solid var(--st-bd);
+  background: var(--st-bg);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+/* The 5px colour bar carries the status alongside the word, so colour is never
+ * the only channel. */
+.tagBar {
+  width: 5px;
+  flex: none;
+  background: var(--st-fg);
+}
+.tagText {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--st-fg);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px 3px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--st-bg);
+  color: var(--st-fg);
+  border: 1px solid var(--st-bd);
+}
+.chipDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* ── Category pill ────────────────────────────────────────────────────── */
+
+.catPill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--cat-fallback-bg);
+  color: var(--cat-fallback-fg);
+}
+.catPill[data-cat='dairy']       { background: var(--cat-dairy-bg);       color: var(--cat-dairy-fg); }
+.catPill[data-cat='bakery']      { background: var(--cat-bakery-bg);      color: var(--cat-bakery-fg); }
+.catPill[data-cat='produce']     { background: var(--cat-produce-bg);     color: var(--cat-produce-fg); }
+.catPill[data-cat='pantry']      { background: var(--cat-pantry-bg);      color: var(--cat-pantry-fg); }
+.catPill[data-cat='seafood']     { background: var(--cat-seafood-bg);     color: var(--cat-seafood-fg); }
+.catPill[data-cat='electronics'] { background: var(--cat-electronics-bg); color: var(--cat-electronics-fg); }
+.catPill[data-cat='clothing']    { background: var(--cat-clothing-bg);    color: var(--cat-clothing-fg); }
+
+/* ── Margin pill ──────────────────────────────────────────────────────── */
+
+.marginPill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--r);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.margin_green { background: var(--green-tint); color: var(--green-text); }
+.margin_amber { background: var(--amber-tint); color: var(--amber-text); }
+.margin_red   { background: var(--red-tint);   color: var(--red); }
+
+.dash {
+  color: var(--disabled);
+}
+
+/* ── Stock ────────────────────────────────────────────────────────────── */
+
+.stock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.stockNum {
+  width: 26px;
+  text-align: right;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.stockNum[data-low] {
+  color: var(--red);
+}
+.stockTrack {
+  width: 80px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--track);
+  overflow: hidden;
+  display: block;
+  flex: none;
+}
+.stockFill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.stockFill[data-tone='red']   { background: var(--red-bar); }
+.stockFill[data-tone='amber'] { background: var(--amber); }
+.stockFill[data-tone='green'] { background: var(--green); }
+
+/* ── Confidence ───────────────────────────────────────────────────────── */
+
+.conf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.confTrack {
+  width: 46px;
+  height: 5px;
+  border-radius: var(--r);
+  background: var(--track);
+  flex: none;
+  display: block;
+  overflow: hidden;
+}
+.confFill {
+  display: block;
+  height: 5px;
+  border-radius: var(--r);
+}
+.confFill[data-tone='green'] { background: var(--green); }
+.confFill[data-tone='amber'] { background: var(--amber); }
+.confFill[data-tone='red']   { background: var(--red-bar); }
+.confNum {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+/* Said in words, because an empty bar would read as zero confidence and that
+ * is a claim the agent did not make. */
+.notReported {
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--disabled);
+}
+
+/* ── Signal bars ──────────────────────────────────────────────────────── */
+
+.bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 13px;
+}
+.bar {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--track);
+}
+.bar[data-h='1'] { height: 5px; }
+.bar[data-h='2'] { height: 9px; }
+.bar[data-h='3'] { height: 13px; }
+.bar[data-on] {
+  background: var(--ink-body);
+}
+
+/* ── Battery ──────────────────────────────────────────────────────────── */
+
+.battery {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.batteryShell {
+  position: relative;
+  width: 26px;
+  height: 12px;
+  border: 1px solid var(--border-input);
+  border-radius: 2px;
+  padding: 1px;
+  display: block;
+  flex: none;
+}
+/* The terminal nub, so a 12px rectangle reads as a battery without an icon. */
+.batteryShell::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: 3px;
+  width: 2px;
+  height: 4px;
+  background: var(--border-input);
+  border-radius: 0 1px 1px 0;
+}
+.batteryFill {
+  display: block;
+  height: 100%;
+  border-radius: 1px;
+}
+.batteryFill[data-tone='green'] { background: var(--green); }
+.batteryFill[data-tone='amber'] { background: var(--amber); }
+.batteryFill[data-tone='red']   { background: var(--red-bar); }
+.batteryNum {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+/* ── Search input ─────────────────────────────────────────────────────── */
+
+.searchWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 220px;
+  min-width: 140px;
+}
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: block;
+  pointer-events: none;
+  z-index: 1;
+  color: var(--ink-muted);
+}
+.searchInput {
+  width: 100%;
+  padding-left: 30px;
+}
+/* The native clear button is a different glyph on every platform and none of
+ * them match this design. */
+.searchInput::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+/* ── Menus ────────────────────────────────────────────────────────────── */
+
+.menuWrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.moreBtn,
+.moreBtnPlain {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--ink);
+  border-radius: var(--r);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.moreBtn {
+  border: 1px solid var(--border-card);
+}
+.moreBtnPlain {
+  width: 30px;
+  height: 30px;
+  border: none;
+  color: var(--ink-body);
+}
+.moreBtn:hover,
+.moreBtnPlain:hover {
+  background: var(--hover);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 7px);
+  z-index: 60;
+  min-width: 190px;
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--rl);
+  overflow: hidden;
+  box-shadow: var(--shadow-menu);
+}
+.menuRight { right: 0; }
+.menuLeft  { left: 0; }
+/* Used by the selection island, which sits at the bottom of the viewport and
+ * would otherwise open its menu off-screen. */
+.menuUp {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.menuItem {
+  display: block;
+  width: 100%;
+  padding: 10px 13px;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--divider);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.menuItem:first-child {
+  border-top: none;
+}
+.menuItem:hover:not(:disabled) {
+  background: var(--hover);
+}
+.menuItem:disabled {
+  color: var(--disabled);
+  cursor: not-allowed;
+}
+.menuItem[data-destructive] {
+  color: var(--red);
+}
+
+/* ── Pagination ───────────────────────────────────────────────────────── */
+
+.pagination {
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 22px;
+  flex-wrap: wrap;
+  background: var(--subtle);
+  border-top: 1px solid var(--divider);
+}
+
+.pageSize {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pageSizeLabel {
+  font-size: var(--fs-body);
+  color: var(--ink-2);
+}
+.pageSizeSelect {
+  height: 32px;
+  font-weight: 600;
+  border-color: var(--border-card);
+}
+
+.range {
+  font-size: var(--fs-body);
+  color: var(--ink-body);
+}
+
+.pageNums {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pageArrow,
+.pageNum {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--r);
+  font-size: var(--fs-body);
+  color: var(--ink);
+  cursor: pointer;
+}
+.pageArrow {
+  width: 32px;
+  padding: 0;
+}
+.pageArrow:hover:not(:disabled),
+.pageNum:hover {
+  background: var(--hover);
+}
+.pageArrow:disabled {
+  color: var(--border-input);
+  cursor: not-allowed;
+}
+.pageNum[data-current] {
+  background: var(--page);
+  font-weight: 600;
+}
+
+/* ── Empty / error / skeleton ─────────────────────────────────────────── */
+
+.empty,
+.errorCard {
+  padding: 64px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.errorCard {
+  padding: 40px;
+  border-color: var(--red-border);
+}
+
+.emptyMark {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r);
+  background: var(--hover);
+  border: 1px solid var(--border-card);
+  display: inline-block;
+}
+.errorMark {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r);
+  background: var(--red-surface);
+  border: 1px solid var(--red-border);
+  color: var(--red);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 32px;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 2px 0 0;
+  font-size: 17px;
+}
+.emptyBody {
+  margin: 0;
+  max-width: 430px;
+  font-size: var(--fs-card);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.emptyActions {
+  display: flex;
+  gap: 9px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.skeleton {
+  padding: 6px 0;
+}
+.skelRow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--divider);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+.skelRow:last-child {
+  border-bottom: none;
+}
+.skelBox {
+  width: 15px;
+  height: 15px;
+  border-radius: var(--r);
+  background: #ded8c8;
+  flex: none;
+}
+.skelBar {
+  height: 12px;
+  border-radius: var(--r);
+  background: var(--hover);
+}
+
+/* ── Modal ────────────────────────────────────────────────────────────── */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.modal {
+  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--rl);
+  box-shadow: var(--shadow-acct);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--divider);
+}
+/* A modal with a subtitle gets a taller head and top-aligned content, so the ×
+ * sits level with the title rather than floating between two lines. Without the
+ * attribute the delete confirmation keeps its centred single-line head. */
+.modalHead[data-stacked] {
+  align-items: flex-start;
+  padding: 20px 24px;
+}
+
+.modalHeadText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.modalTitle {
+  font-size: 17px;
+}
+
+.modalSubtitle {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.modalClose {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--r);
+  color: var(--ink-body);
+  cursor: pointer;
+}
+.modalClose:hover {
+  background: var(--hover);
+}
+
+.modalBody {
+  padding: 20px;
+  overflow-y: auto;
+  font-size: var(--fs-card);
+  line-height: 1.55;
+  color: var(--ink-body);
+}
+.modalFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--divider);
+  background: var(--subtle);
+  border-radius: 0 0 var(--rl) var(--rl);
+}
+
+/* ── Sparkline & charts ───────────────────────────────────────────────── */
+
+.spark {
+  display: block;
+}
+.sparkLine {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+.sparkArea {
+  fill: var(--ink);
+  fill-opacity: 0.08;
+}
+.sparkEmpty {
+  display: flex;
+  align-items: center;
+  font-size: var(--fs-xs);
+  color: var(--disabled);
+}
+
+.chart {
+  display: block;
+  overflow: visible;
+}
+.chartGrid {
+  stroke: var(--divider);
+  stroke-width: 1;
+}
+.chartLine {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+/* Dashed, because it is a price that has not happened. */
+.chartProposed {
+  fill: none;
+  stroke: var(--ac);
+  stroke-width: 1.75;
+  stroke-dasharray: 4 4;
+}
+.chartDot {
+  fill: var(--ac);
+}
+.chartDotNow {
+  fill: var(--ink);
+}
+.chartAxis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* ── SHAP ladder ──────────────────────────────────────────────────────────
+ * The diverging palette. Two hues that read as opposite, with a neutral axis
+ * between them — the chart's whole job is polarity, so the poles must not be
+ * two shades of one colour. Both are checked against the panel surface rather
+ * than against white. */
+
+.shap {
+  --shap-down: #2f5d8c;  /* cool: pushed the price down */
+  --shap-up: #9c4a2c;    /* warm: pushed it up */
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shapRows {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.shapRow {
+  display: grid;
+  grid-template-columns: minmax(96px, 150px) minmax(0, 1fr) 62px;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Sans, not mono: a feature name is a label a person wrote, and the mono
+ * register is reserved for machine values. */
+.shapFeature {
+  font-size: var(--fs-body);
+  color: var(--ink-body);
+  text-transform: capitalize;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shapTrack {
+  position: relative;
+  height: 20px;
+  background: var(--subtle);
+  border-radius: 3px;
+  display: block;
+}
+/* The zero line. Neutral grey, never the accent — the accent is chrome and
+ * must not enter a plot where it could be mistaken for the warm arm. */
+.shapAxis {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-input);
+}
+.shapBar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 2px;
+  min-width: 2px;
+}
+.shapBar[data-dir='up']   { background: var(--shap-up); }
+.shapBar[data-dir='down'] { background: var(--shap-down); }
+
+.shapValue {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-align: right;
+  color: var(--ink-2);
+}
+
+.shapLegend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+.shapLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.shapSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.shapSwatch[data-dir='up']   { background: var(--shap-up); }
+.shapSwatch[data-dir='down'] { background: var(--shap-down); }
+
+.shapSum {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--ink-2);
+  padding-top: 12px;
+  border-top: 1px solid var(--divider);
+}
+
+/* ── Toggle ───────────────────────────────────────────────────────────────── */
+
+.toggleWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.toggleTrack {
+  width: 34px;
+  height: 20px;
+  flex: none;
+  padding: 2px;
+  border: none;
+  border-radius: var(--r);
+  background: var(--border-input);
+  display: flex;
+  justify-content: flex-start;
+  cursor: pointer;
+  transition: background-color 150ms ease, justify-content 150ms ease;
+}
+.toggleTrack[data-on] {
+  background: var(--ac);
+  justify-content: flex-end;
+}
+.toggleTrack:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggleKnob {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: block;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* The state in words as well as position. Amber when off, because "Excluded"
+ * is a decision with consequences, not a neutral default. */
+.toggleLabel {
+  font-size: var(--fs-body);
+  color: var(--amber-text-alt);
+  white-space: nowrap;
+}
+.toggleLabel[data-on] {
+  color: var(--ink-2);
+}
+
+/* ── Donut ────────────────────────────────────────────────────────────────── */
+
+.donut {
+  position: relative;
+  flex: none;
+}
+
+/* Rotated so the first segment starts at twelve o'clock. */
+.donutSvg {
+  display: block;
+  transform: rotate(-90deg);
+}
+
+.donutTrack {
+  fill: none;
+  stroke: var(--hover);
+}
+
+.donutSeg {
+  fill: none;
+  stroke-linecap: butt;
+  transition: opacity 150ms ease;
+}
+.donutSeg[data-dim] {
+  opacity: 0.25;
+}
+.donutSeg[data-tone='green'] { stroke: var(--green); }
+.donutSeg[data-tone='amber'] { stroke: var(--amber); }
+.donutSeg[data-tone='red']   { stroke: var(--red); }
+.donutSeg[data-tone='muted'] { stroke: var(--disabled); }
+
+.donutCentre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.donutTotal {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.donutLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* ── Tree ─────────────────────────────────────────────────────────────────── */
+
+.tree,
+.treeGroup {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.treeEmpty {
+  padding: 18px 14px;
+  font-size: var(--fs-body);
+  color: var(--ink-2);
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding-right: 8px;
+  cursor: pointer;
+  border-radius: var(--r);
+}
+.treeRow:hover {
+  background: var(--row-hover);
+}
+.treeRow[data-selected] {
+  background: #e9e4d4;
+}
+.treeRow:focus-visible {
+  outline: 2px solid var(--ac);
+  outline-offset: -2px;
+}
+
+.treeCaret {
+  width: 14px;
+  height: 20px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 10px;
+  color: var(--ink-2);
+  cursor: pointer;
+  border-radius: var(--r);
+}
+.treeCaret:hover {
+  background: var(--track);
+}
+
+.treeLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A zone reads as a heading; the levels under it do not. */
+.treeLabel[data-depth='0'] {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.treeRow[data-selected] .treeLabel {
+  font-weight: 600;
+}
+
+.treeMeta {
+  flex: none;
+  font-size: 11px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 104px;
+}
+
+/* Actions replace the meta on hover rather than sitting beside it — a 284px
+ * column has room for one or the other. */
+.treeActions {
+  flex: none;
+  display: none;
+  align-items: center;
+  gap: 2px;
+}
+.treeRow:hover .treeActions,
+.treeRow:focus-within .treeActions {
+  display: flex;
+}
+.treeRow:hover .treeMeta,
+.treeRow:focus-within .treeMeta {
+  display: none;
+}
+
+/* ── ConfirmModal ─────────────────────────────────────────────────────────── */
+
+.confirmBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.confirmBody p {
+  margin: 0;
+}
+
+.confirmError {
+  padding: 10px 12px;
+  background: var(--red-surface);
+  border: 1px solid var(--red-border);
+  border-radius: var(--r);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--red-deep);
+}
