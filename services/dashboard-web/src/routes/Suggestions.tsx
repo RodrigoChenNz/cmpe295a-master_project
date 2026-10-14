@@ -16,7 +16,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
-import { countdown, money, pct, pctPlain, plural } from '../lib/format';
+import { countdown, money, pct, pctPlain, plural, isManagerRole } from '../lib/format';
 import { useDebounced, useResource } from '../lib/useStream';
 import { usePageChrome, useShell, useStreamEvents } from '../components/AppShell';
 import {
@@ -31,7 +31,7 @@ type Size = 'any' | 'small' | 'large';
 export function Suggestions() {
   const navigate = useNavigate();
   const { user, toast } = useShell();
-  const canDecide = user.role === 'manager';
+  const canDecide = isManagerRole(user.role);
 
   const [q, setQ] = useState('');
   const [direction, setDirection] = useState<Direction>('any');

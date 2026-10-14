@@ -42,6 +42,7 @@ def _where(
     stock: list[str],
     review: list[str],
     view: str,
+    location: str | None = None,
 ) -> tuple[str, list]:
     """Build the WHERE clause and its parameters.
 
@@ -80,6 +81,20 @@ def _where(
             parts.append("last_change_dir = 'down'")
         clauses.append("(" + " OR ".join(parts) + ")")
 
+    if location == "unassigned":
+        clauses.append("location_id IS NULL")
+    elif location:
+        # A location means everything underneath it too: filtering on a zone
+        # shows the products in every aisle and bay inside it.
+        add(
+            "location_id IN (WITH RECURSIVE sub AS ("
+            " SELECT location_id FROM locations WHERE location_id = {0}"
+            " UNION ALL SELECT l.location_id FROM locations l"
+            " JOIN sub ON l.parent_id = sub.location_id)"
+            " SELECT location_id FROM sub)",
+            location,
+        )
+
     # The saved view is a last AND on top of the panel filters, which is why a
     # view and a conflicting filter can legitimately produce an empty list.
     if view == "low":
@@ -98,6 +113,8 @@ async def list_products(
     stock: Annotated[list[StockHealth], Query()] = [],
     review: Annotated[list[PriceReview], Query()] = [],
     view: SavedView = "all",
+    # A location id (its whole subtree), or "unassigned".
+    location: str | None = None,
     sort: str = "name",
     dir: Literal["asc", "desc"] = "asc",
     page: int = Query(1, ge=1),
@@ -111,7 +128,7 @@ async def list_products(
     column = SORTABLE[sort]
     direction = "ASC" if dir == "asc" else "DESC"
 
-    where, params = _where(q, list(category), list(stock), list(review), view)
+    where, params = _where(q, list(category), list(stock), list(review), view, location)
 
     total = await db.fetchval(
         f"SELECT count(*) FROM shelfiq_products WHERE {where}", *params
@@ -167,7 +184,8 @@ async def facets(
               count(*) FILTER (WHERE pending_count > 0)              AS needs_review,
               count(*) FILTER (WHERE last_change_dir = 'up')         AS price_up,
               count(*) FILTER (WHERE last_change_dir = 'down')       AS price_down,
-              count(*) FILTER (WHERE stock_health IN ('low','out'))  AS low_stock
+              count(*) FILTER (WHERE stock_health IN ('low','out'))  AS low_stock,
+              count(*) FILTER (WHERE location_id IS NULL)            AS unassigned
              FROM shelfiq_products WHERE {where}""",
         *params,
     )
@@ -185,6 +203,7 @@ async def facets(
             "up": counts["price_up"],
             "down": counts["price_down"],
         },
+        "unassigned": counts["unassigned"],
         "total": counts["all_products"],
     }
 
@@ -258,6 +277,10 @@ class ProductBody(BaseModel):
     auto_approve_pct: Decimal | None = Field(default=None, ge=0, le=100)
     agent_excluded: bool = False
     image_url: str | None = Field(default=None, max_length=500)
+    # Where it lives in the store, at any level. Optional: products are usually
+    # entered first and placed afterwards. On update it changes only when the
+    # field is sent, so an edit form that does not show it cannot clear it.
+    location_id: str | None = Field(default=None, max_length=60)
 
     @field_validator("display_name")
     @classmethod
@@ -268,7 +291,129 @@ class ProductBody(BaseModel):
 
 
 class NewProductBody(ProductBody):
-    product_id: str = Field(pattern=r"^SKU-[0-9]{3,}$")
+    """Deliberately has no `product_id`.
+
+    That is the frozen contract key — every contracts/*.schema.json patterns it
+    as `^SKU-[0-9]{3,}$` and four services join on it — so it is allocated here
+    rather than typed by a human who could collide with whatever the agent is
+    about to propose.
+    """
+
+    # The opening price. NOT a products column: price lives in price_history and
+    # is written only by gate.publish_price, so this is published after the row
+    # is created rather than inserted with it. Manager only; see the guard in
+    # create_product.
+    price: Decimal | None = Field(default=None, gt=0, decimal_places=2)
+
+
+# One arbitrary but stable key, so any create serialises against any other.
+_PRODUCT_ID_LOCK = 0x5348454C  # 'SHEL'
+
+# Category → article-code prefix. A map rather than the first two letters,
+# because the catalogue's own codes are not derived that way: Pantry is PN and
+# Seafood is SF.
+_SKU_PREFIX = {
+    "dairy": "DA", "bakery": "BK", "produce": "PR", "pantry": "PN",
+    "seafood": "SF", "electronics": "EL", "clothing": "CL",
+}
+
+
+async def layout_configured() -> bool:
+    return bool(await db.fetchval("SELECT EXISTS (SELECT 1 FROM location_levels)"))
+
+
+async def _assert_location(location_id: str | None) -> None:
+    if location_id is None:
+        return
+    if not await db.fetchval(
+        "SELECT EXISTS (SELECT 1 FROM locations WHERE location_id = $1)", location_id
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such location.")
+
+
+async def _next_product_id(conn) -> str:
+    """The next unused SKU-NNN. Caller must hold _PRODUCT_ID_LOCK."""
+    highest = await conn.fetchval(
+        """SELECT coalesce(max(substring(product_id from 5)::int), 0)
+             FROM products WHERE product_id ~ '^SKU-[0-9]+$'"""
+    )
+    # Padded to three and no further: the contract pattern is `{3,}`, so SKU-027
+    # and SKU-1004 are both valid and the width only matters below a thousand.
+    return f"SKU-{highest + 1:03d}"
+
+
+async def _next_sku(conn, category: str | None) -> str | None:
+    """The store's own article code, generated from the category.
+
+    The number is store-wide rather than per prefix, because the catalogue's
+    codes run 1007, 1014, 1021 across every category in one sequence — a
+    per-category counter would mint a "DA-1001" that sorts before the existing
+    DA-1007 and reads as older than it is.
+
+    With no category there is no code: the field's hint promises generation
+    *from the category*, and inventing a prefix would be an identifier that
+    means nothing. The Products table already falls back to the product_id.
+    """
+    if not category:
+        return None
+    prefix = _SKU_PREFIX.get(category.strip().lower())
+    if prefix is None:
+        letters = "".join(c for c in category.upper() if c.isalpha())
+        prefix = (letters[:2] or "XX")
+    highest = await conn.fetchval(
+        """SELECT coalesce(max(substring(sku from 4)::int), 1000)
+             FROM products WHERE sku ~ '^[A-Z]{2}-[0-9]{4}$'"""
+    )
+    return f"{prefix}-{highest + 1:04d}"
+
+
+async def _assert_no_clash(conn, *, sku: str | None, upc: str | None) -> None:
+    """Refuse a duplicate article code or barcode, naming what already holds it.
+
+    Deliberately NOT filtered on `archived_at`: products_sku_idx and
+    products_upc_idx cover archived rows too, so an archived product still
+    blocks the value. The right action differs, so the message says which case
+    it is rather than leaving someone to guess why a code they cannot see is
+    taken.
+    """
+    checks = (
+        ("upc", upc, "SELECT product_id, name, archived_at FROM products WHERE upc = $1"),
+        ("sku", sku, "SELECT product_id, name, archived_at FROM products WHERE sku = $1"),
+    )
+    for label, value, query in checks:
+        if not value:
+            continue
+        row = await conn.fetchrow(query, value)
+        if row is None:
+            continue
+        who = f"{row['name']} ({row['product_id']})"
+        if row["archived_at"]:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"That {label.upper()} belongs to {who}, which is archived. "
+                "Restore that product rather than adding a duplicate.",
+            )
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, f"That {label.upper()} already belongs to {who}."
+        )
+
+
+def _clash_error(constraint: str) -> HTTPException:
+    """The backstop for a race _assert_no_clash cannot see.
+
+    update_product takes no lock, so it can move a UPC onto the value we just
+    checked. Without this the race is a 500; with it, it is the same 409 as the
+    ordinary case.
+    """
+    which = {
+        "products_upc_idx": "That UPC",
+        "products_sku_idx": "That SKU",
+        "products_pkey": "That product id",
+    }.get(constraint, "That value")
+    return HTTPException(
+        status.HTTP_409_CONFLICT,
+        f"{which} was taken by another product a moment ago. Try again.",
+    )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -280,37 +425,96 @@ async def create_product(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Minimum price cannot exceed the maximum."
         )
-    exists = await db.fetchval(
-        "SELECT 1 FROM products WHERE product_id = $1", body.product_id
-    )
-    if exists:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, f"{body.product_id} is already in the catalogue."
-        )
 
-    await db.execute(
-        """INSERT INTO products
-               (product_id, name, display_name, sku, upc, brand, supplier, category,
-                unit_cost, stock_on_hand, min_price, max_price, auto_approve_pct,
-                agent_excluded, image_url, policy_set_by, policy_set_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, now())""",
-        body.product_id, body.name, body.display_name, body.sku, body.upc,
-        body.brand, body.supplier, body.category, body.unit_cost,
-        body.stock_on_hand, body.min_price, body.max_price, body.auto_approve_pct,
-        body.agent_excluded, body.image_url, user.username,
-    )
+    # Checked before anything is written, so a staff member never ends up with a
+    # product created AND a refusal. An opening price is a price_history row
+    # carrying `approval` and `approved_by`, and a retained message on
+    # retail/price/ that goes live the moment a label is paired — so it needs
+    # the authority that makes those fields mean something.
+    if body.price is not None and user.role not in auth.MANAGER_ROLES:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "A manager sets a product's opening price. Add the product without "
+            "one and ask a manager to price it.",
+        )
+    # The store's shape comes first: a catalogue entered before the layout
+    # exists has nowhere to be placed, and the console says so everywhere.
+    if not await layout_configured():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Set up the store layout on the Locations screen before adding products.",
+        )
+    await _assert_location(body.location_id)
+
+    async with db.pool().acquire() as conn:
+        async with conn.transaction():
+            # Held across the read and the insert. The id is max+1, so two
+            # concurrent creates do not occasionally collide — they collide
+            # every time, which makes a retry loop's contended case the common
+            # one. The _xact_ variant releases on commit or rollback, so it
+            # cannot leak onto a pooled connection.
+            await conn.execute("SELECT pg_advisory_xact_lock($1)", _PRODUCT_ID_LOCK)
+
+            product_id = await _next_product_id(conn)
+            sku = body.sku or await _next_sku(conn, body.category)
+            await _assert_no_clash(conn, sku=sku, upc=body.upc)
+
+            try:
+                await conn.execute(
+                    """INSERT INTO products
+                           (product_id, name, display_name, sku, upc, brand, supplier,
+                            category, unit_cost, stock_on_hand, min_price, max_price,
+                            auto_approve_pct, agent_excluded, image_url,
+                            policy_set_by, policy_set_at, location_id)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
+                               now(), $17)""",
+                    product_id, body.name, body.display_name, sku, body.upc,
+                    body.brand, body.supplier, body.category, body.unit_cost,
+                    body.stock_on_hand, body.min_price, body.max_price,
+                    body.auto_approve_pct, body.agent_excluded, body.image_url,
+                    user.username, body.location_id,
+                )
+            except Exception as exc:  # noqa: BLE001 - re-raised unless it is a clash
+                constraint = db.unique_constraint(exc)
+                if constraint is None:
+                    raise
+                raise _clash_error(constraint) from exc
 
     if body.min_price and body.max_price:
         await gate.publish_guardrail(
-            product_id=body.product_id,
+            product_id=product_id,
             min_price=body.min_price,
             max_price=body.max_price,
             auto_approve_pct=body.auto_approve_pct,
             set_by=user.username,
         )
 
-    bus.emit("products", changed=[body.product_id], action="created")
-    return await get_product(body.product_id, user)
+    # After the transaction commits, not inside it: publish_price opens its own,
+    # and holding two pool connections at once is how a saturated pool deadlocks.
+    published: bool | None = None
+    if body.price is not None:
+        result = await gate.publish_price(
+            product_id=product_id,
+            price=body.price,
+            # 11 characters, inside the sixteen an LCD line holds.
+            reason_tag="New product",
+            approval="manager",
+            approved_by=user.username,
+            # No proposal behind it and therefore no explanation, exactly as for
+            # a manager-set price on an existing product.
+            decision_id=None,
+            agent_version=None,
+        )
+        published = result["published"]
+
+    bus.emit("products", changed=[product_id], action="created")
+
+    detail = await get_product(product_id, user)
+    if published is not None:
+        # So the client can say "published" or "recorded and queued" rather than
+        # claiming a shelf has it when the broker is down.
+        detail["price_published"] = published
+    return detail
 
 
 @router.put("/{product_id}")
@@ -331,6 +535,10 @@ async def update_product(
     if before is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such product.")
 
+    move = "location_id" in body.model_fields_set
+    if move:
+        await _assert_location(body.location_id)
+
     policy_changed = (
         before["min_price"] != body.min_price
         or before["max_price"] != body.max_price
@@ -345,12 +553,13 @@ async def update_product(
                   agent_excluded = $14, image_url = $15,
                   policy_set_by = CASE WHEN $16 THEN $17 ELSE policy_set_by END,
                   policy_set_at = CASE WHEN $16 THEN now() ELSE policy_set_at END,
+                  location_id = CASE WHEN $18 THEN $19 ELSE location_id END,
                   updated_at = now()
             WHERE product_id = $1""",
         product_id, body.name, body.display_name, body.sku, body.upc, body.brand,
         body.supplier, body.category, body.unit_cost, body.stock_on_hand,
         body.min_price, body.max_price, body.auto_approve_pct, body.agent_excluded,
-        body.image_url, policy_changed, user.username,
+        body.image_url, policy_changed, user.username, move, body.location_id,
     )
 
     # Only publish a guardrail when the policy actually moved. Republishing a
@@ -486,4 +695,31 @@ async def bulk_category(
     )
     ids = [r["product_id"] for r in rows]
     bus.emit("products", changed=ids, action="recategorised")
+    return {"updated": ids, "count": len(ids)}
+
+
+class BulkLocationBody(BaseModel):
+    product_ids: list[str] = Field(min_length=1, max_length=500)
+    # None takes them out of any location.
+    location_id: str | None = Field(default=None, max_length=60)
+
+
+@router.post("/bulk/location")
+async def bulk_location(
+    body: BulkLocationBody,
+    _user: Annotated[auth.CurrentUser, Depends(auth.require_editor)],
+) -> dict:
+    """Place many products at once — how a catalogue entered first gets linked
+    to the layout afterwards."""
+    await _assert_location(body.location_id)
+    rows = await db.fetch(
+        """UPDATE products SET location_id = $2, updated_at = now()
+            WHERE product_id = ANY($1) AND archived_at IS NULL
+        RETURNING product_id""",
+        body.product_ids,
+        body.location_id,
+    )
+    ids = [r["product_id"] for r in rows]
+    bus.emit("products", changed=ids, action="located")
+    bus.emit("locations", action="products")
     return {"updated": ids, "count": len(ids)}

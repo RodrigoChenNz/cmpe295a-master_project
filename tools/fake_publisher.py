@@ -319,7 +319,15 @@ async def heartbeat_labels(pool: asyncpg.Pool, rng: random.Random) -> None:
 async def main() -> None:
     rng = random.Random()
     pool = await asyncpg.create_pool(dsn=DATABASE_URL, min_size=1, max_size=4)
-    ttl = await pool.fetchval("SELECT proposal_ttl_hours FROM change_limits LIMIT 1") or 4
+    # This writes fake proposals and label sightings. Only ever do that to the
+    # demo database, which the seed marks; never to one holding real data.
+    if not await pool.fetchval("SELECT to_regclass('public.sample_data_marker') IS NOT NULL"):
+        await pool.close()
+        sys.exit(
+            "fake_publisher: this database is not the demo seed (no sample_data_marker).\n"
+            "Refusing to write emulated data into it. Use `make demo` instead of `make up`."
+        )
+    ttl =await pool.fetchval("SELECT proposal_ttl_hours FROM change_limits LIMIT 1") or 4
 
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

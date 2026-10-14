@@ -801,3 +801,34 @@
     padding: 10px 16px;
   }
 }
+
+/* ── First-run setup prompt ───────────────────────────────────────────── */
+
+.setupBanner {
+  background: var(--subtle);
+  border-bottom: 1px solid var(--border-card);
+  padding: 9px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.setupTag {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ac);
+  border: 1px solid currentColor;
+  border-radius: var(--r);
+  padding: 2px 7px;
+}
+.setupText {
+  flex: 1 1 320px;
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--ink-strong);
+  min-width: 0;
+}

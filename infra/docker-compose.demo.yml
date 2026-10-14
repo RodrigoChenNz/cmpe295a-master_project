@@ -1,0 +1,50 @@
+# Demo overlay: sample data plus an emulator standing in for Layers 1-4.
+#
+#   make demo          (same as: make up DEMO=1)
+#
+# Layered on top of docker-compose.yml. Without it the stack starts on an empty
+# database and nothing publishes but the real services.
+#
+# The demo database lives in its own volume, so switching between `make up` and
+# `make demo` never mixes sample rows into real ones and needs no `make nuke`.
+
+services:
+  postgres:
+    volumes:
+      # Applied after 01 and 02, on first start of an empty volume only.
+      - ./postgres/03-seed.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
+      # Same target as the base file's mount, so this replaces it.
+      - postgres-demo-data:/var/lib/postgresql/data
+
+  dashboard-api:
+    environment:
+      # The seed ships every user with an unusable password hash so that no
+      # committed file holds a working credential. On startup the API gives
+      # this one a password from .env and makes it the super admin.
+      # Demo sign-in: admin@admin.com / admin, unless .env says otherwise.
+      SHELFIQ_BOOTSTRAP_USER: ${SHELFIQ_BOOTSTRAP_USER:-admin}
+      SHELFIQ_BOOTSTRAP_EMAIL: ${SHELFIQ_BOOTSTRAP_EMAIL:-admin@admin.com}
+      SHELFIQ_BOOTSTRAP_NAME: ${SHELFIQ_BOOTSTRAP_NAME:-Admin}
+      SHELFIQ_BOOTSTRAP_PASSWORD: ${SHELFIQ_BOOTSTRAP_PASSWORD:-admin}
+
+  # tools/fake_publisher.py, run inside the API image, which already has
+  # aiomqtt and asyncpg.
+  fake-publisher:
+    build: ../services/dashboard-api
+    container_name: rp-fake-publisher
+    working_dir: /srv
+    entrypoint: ["python", "tools/fake_publisher.py"]
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      DATABASE_URL: postgresql://retail:retail_dev_only@postgres:5432/retail_pricing
+    volumes:
+      - ../tools:/srv/tools:ro
+    depends_on:
+      # After the API, so the seed has been applied and the bridge is listening
+      # before the first proposal goes out.
+      - dashboard-api
+    restart: unless-stopped
+
+volumes:
+  postgres-demo-data:

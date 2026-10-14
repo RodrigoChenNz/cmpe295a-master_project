@@ -10,6 +10,8 @@
  *    about the business that nobody made.
  */
 
+import type { LocationLevel, Role } from './types';
+
 export const DASH = '—';
 
 /** Format a money string for display. Input is "3.49" or "449.00". */
@@ -21,6 +23,47 @@ export function money(value: string | null | undefined, currency = '$'): string 
   const [whole, cents = '00'] = (negative ? value.slice(1) : value).split('.');
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `${negative ? '−' : ''}${currency}${grouped}.${cents.padEnd(2, '0').slice(0, 2)}`;
+}
+
+/* ── Shelf label lines ────────────────────────────────────────────────────
+ *
+ * What the firmware will actually render, computed here by the same rule the
+ * publisher uses (`gate.render_lines` in dashboard-api). Any preview in this
+ * app goes through these, so the mirror cannot disagree with the glass about
+ * anything except timing.
+ *
+ * Both cut at sixteen characters because the hardware does. A longer string
+ * does not wrap — it disappears.
+ */
+
+/** LCD line 1: the display name, uppercased and cut to sixteen cells. */
+export function shelfLine1(displayName: string): string {
+  return (displayName ?? '').toUpperCase().slice(0, 16);
+}
+
+/** `$X.XX` for a shelf label, from the money string the API sent.
+ *
+ * Deliberately not `money()`: that groups thousands, and the publisher's
+ * `f"${price:.2f}"` does not — a label reading `$1,234.56` would be four
+ * characters longer than the one the firmware draws. Also deliberately not
+ * `Number(price).toFixed(2)`, which is the float round-trip DESIGN.md rule 1
+ * forbids; this pads and slices the string it was given.
+ */
+function shelfMoney(price: string): string {
+  const negative = price.startsWith('-');
+  const [whole = '0', cents = ''] = (negative ? price.slice(1) : price).split('.');
+  return `${negative ? '-' : ''}$${whole || '0'}.${cents.padEnd(2, '0').slice(0, 2)}`;
+}
+
+/** LCD line 2: the price, then the reason tag if what is left of the line can
+ *  hold a meaningful amount of it. Mirrors `gate.render_lines` exactly. */
+export function shelfLine2(price: string | null | undefined, reasonTag: string): string {
+  if (!price) return '';
+  const moneyPart = shelfMoney(price);
+  const room = 16 - moneyPart.length - 1;
+  return room >= 4 && reasonTag
+    ? `${moneyPart} ${reasonTag.slice(0, room)}`.slice(0, 16)
+    : moneyPart.slice(0, 16);
 }
 
 /** Coerce a percentage to a number, or null.
@@ -199,4 +242,146 @@ export function initials(name: string): string {
 
 export function plural(n: number, one: string, many = `${one}s`): string {
   return n === 1 ? one : many;
+}
+
+
+/* ── Shelf labels and roles ───────────────────────────────────────────────── */
+
+/** The words the console uses for the four roles the API enforces. */
+export const ROLE_LABEL: Record<string, string> = {
+  superadmin: 'Super admin',
+  manager: 'Store manager',
+  staff: 'Shelf staff',
+  viewer: 'Read only',
+};
+
+/* ── Store layout levels ──────────────────────────────────────────────────── */
+
+/** The store's name for a depth, e.g. 3 → "Aisle". */
+export function levelName(levels: LocationLevel[], depth: number): string {
+  return levels.find((l) => l.depth === depth)?.name ?? `Level ${depth}`;
+}
+
+/** "Floor › Zone › Aisle › Bay". */
+export function levelPath(levels: LocationLevel[]): string {
+  return levels.map((l) => l.name).join(' › ');
+}
+
+/** A level name as a count: "1 aisle", "3 aisles". Names are the store's own,
+ *  so pluralising is a best effort: "Shelf" → "shelves", "Bay" → "bays". */
+export function levelCount(n: number, name: string): string {
+  const lower = name.toLowerCase();
+  if (n === 1) return `${n} ${lower}`;
+  const plural = /(s|x|z|ch|sh)$/.test(lower)
+    ? `${lower}es`
+    : /[^aeiou]y$/.test(lower)
+      ? `${lower.slice(0, -1)}ies`
+      : /lf$/.test(lower)
+        ? `${lower.slice(0, -1)}ves`
+        : `${lower}s`;
+  return `${n} ${plural}`;
+}
+
+/** "a bay", "an aisle". */
+export function withArticle(word: string): string {
+  return /^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`;
+}
+
+/** Most privileged first; mirrors ROLE_ORDER in dashboard-api's auth.py. */
+export const ROLE_ORDER: Role[] = ['superadmin', 'manager', 'staff', 'viewer'];
+
+const rank = (role: string) => {
+  const i = ROLE_ORDER.indexOf(role as Role);
+  return i === -1 ? ROLE_ORDER.length : i;
+};
+
+/** May approve prices and change policy: what the API's require_manager admits. */
+export function isManagerRole(role: string): boolean {
+  return role === 'superadmin' || role === 'manager';
+}
+
+/** The API's rank rule: a super admin manages everyone; anyone else only the
+ *  roles below their own. Used both for "may I touch this account" and "may I
+ *  grant this role". */
+export function canManageRole(actor: string, target: string): boolean {
+  return actor === 'superadmin' || rank(target) > rank(actor);
+}
+
+/** The short hardware name for a table cell.
+ *
+ * Deliberately a second constant rather than a refactor of `ShelfDisplay`'s
+ * HARDWARE_LABEL: that one names the part on a preview where there is room for
+ * it ("Heltec Vision Master E213 · e-ink"), this one fits a column. */
+export function labelDisplayName(kind: string | null | undefined): string {
+  return kind === 'eink' ? 'E213 e-ink' : '16×2 LCD';
+}
+
+/** The CSS token stem for a label-status dot. */
+export function statusDotToken(status: string | null | undefined): string {
+  switch (status) {
+    case 'online':
+      return 'green';
+    case 'syncing':
+      return 'amber';
+    case 'failed':
+      return 'red';
+    default:
+      return 'muted';
+  }
+}
+
+export interface DonutSegment {
+  key: string;
+  label: string;
+  value: number;
+  tone: string;
+  /** stroke-dasharray */
+  dash: string;
+  /** stroke-dashoffset */
+  offset: number;
+  pct: number;
+}
+
+/** Arc maths for the operational-health ring, kept out of the component.
+ *
+ * Three cases the design does not cover, each of which draws something wrong if
+ * handled naively:
+ *   - a total of zero → no segments at all, so the caller renders the track
+ *   - one non-zero segment → a full ring with no gap, or you draw a stray notch
+ *   - a segment thinner than the gap → clamped, so one failed label is visible
+ */
+export function donutSegments(
+  counts: Record<string, number>,
+  order: { key: string; label: string; tone: string }[],
+  radius = 58,
+  gap = 3,
+): { segments: DonutSegment[]; total: number; circumference: number } {
+  const circumference = 2 * Math.PI * radius;
+  const total = order.reduce((n, o) => n + (counts[o.key] ?? 0), 0);
+  if (total === 0) return { segments: [], total: 0, circumference };
+
+  const nonZero = order.filter((o) => (counts[o.key] ?? 0) > 0);
+  const useGap = nonZero.length > 1 ? gap : 0;
+
+  let acc = 0;
+  const segments: DonutSegment[] = [];
+  for (const o of order) {
+    const value = counts[o.key] ?? 0;
+    if (value > 0) {
+      const len = (value / total) * circumference;
+      segments.push({
+        key: o.key,
+        label: o.label,
+        tone: o.tone,
+        value,
+        // At least 1px of arc: a single failed label out of several hundred
+        // would otherwise round to nothing and read as "none failed".
+        dash: `${Math.max(1, len - useGap).toFixed(2)} ${circumference.toFixed(2)}`,
+        offset: -acc,
+        pct: Math.round((value / total) * 100),
+      });
+      acc += len;
+    }
+  }
+  return { segments, total, circumference };
 }

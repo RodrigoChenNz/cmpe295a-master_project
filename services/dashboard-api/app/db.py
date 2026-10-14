@@ -76,6 +76,31 @@ async def execute(query: str, *args: Any) -> str:
         return await conn.execute(query, *args)
 
 
+def unique_constraint(exc: Exception) -> str | None:
+    """The index name behind a unique-violation, or None if that is not what
+    this exception is.
+
+    Here rather than in a router so asyncpg stays behind this module's boundary:
+    nothing else in the app imports the driver, and a handler that wants to turn
+    a duplicate into a readable 409 should not have to.
+    """
+    if isinstance(exc, asyncpg.exceptions.UniqueViolationError):
+        return exc.constraint_name
+    return None
+
+
+def foreign_key_constraint(exc: Exception) -> str | None:
+    """The constraint name behind a foreign-key violation, or None.
+
+    Sibling of `unique_constraint`, for the same reason: pairing a label to a
+    slot code nobody has created is a 404 the caller can act on, not the 500 a
+    raw driver error produces.
+    """
+    if isinstance(exc, asyncpg.exceptions.ForeignKeyViolationError):
+        return exc.constraint_name
+    return None
+
+
 def money(value: Decimal | float | int | None) -> str | None:
     """Render money for the wire: a two-decimal string, never a float."""
     if value is None:

@@ -9,7 +9,22 @@
  * Percentages are numbers, because nobody sums them.
  */
 
-export type Role = 'manager' | 'staff' | 'viewer';
+export type Role = 'superadmin' | 'manager' | 'staff' | 'viewer';
+
+/** Who an invite link is for, so the join screen can greet them. */
+export interface InviteInfo {
+  username: string;
+  email: string;
+  full_name: string;
+  role: Role;
+}
+
+export interface InviteIssued {
+  username: string;
+  invite_token: string;
+  invite_path: string;
+  expires_at: string;
+}
 
 export interface User {
   username: string;
@@ -36,6 +51,13 @@ export interface BrokerState {
   error: string | null;
   enabled: boolean;
   queued: number;
+  /** The bridge's last traffic in either direction — not the connect time. */
+  last_message_at?: string | null;
+  /** What the running service is connected to, which can differ from what
+   *  `store_settings` holds until it restarts. */
+  host?: string;
+  port?: number;
+  tls?: boolean;
 }
 
 export interface Meta {
@@ -46,10 +68,17 @@ export interface Meta {
     labels_failed: number;
     labels_offline: number;
     out_of_stock: number;
+    /** Products not linked to any location yet. */
+    unassigned_products: number;
+    products: number;
+    locations: number;
   };
   broker: BrokerState;
   /** Non-null while the seed is in place. Drives the banner that says so. */
   sample_data: { note: string; seeded_at: string } | null;
+  /** The store's own level names. Nothing else can be set up until
+   *  `configured` is true. */
+  layout: { configured: boolean; levels: LocationLevel[] };
 }
 
 /* ── Products ─────────────────────────────────────────────────────────── */
@@ -88,6 +117,9 @@ export interface Product {
   label_kind: LabelKind | null;
   label_status: LabelStatus | null;
   slot_code: string | null;
+  /** Where the product lives in the store, at any level. Null until linked. */
+  location_id: string | null;
+  location_path: string | null;
   dead_stock_risk: number | null;
   predicted_sellby: string | null;
 }
@@ -97,6 +129,7 @@ export interface Facets {
   stock: Partial<Record<StockHealth, number>>;
   views: Record<SavedView, number>;
   review: Record<PriceReview, number>;
+  unassigned: number;
   total: number;
 }
 
@@ -121,6 +154,32 @@ export interface ProductDetail {
   decisions: Decision[];
   label: Label | null;
   shelf_render: ShelfRender;
+  /** Present only on a create that carried an opening price. False means the
+   *  price is recorded and audited but still queued for the broker, so the UI
+   *  must not say it reached a shelf. */
+  price_published?: boolean;
+}
+
+/** The Add product form's payload.
+ *
+ * No `product_id`: that is the frozen contract key and the server allocates it.
+ * `unit_cost` and `price` are strings — money is a string end to end, and
+ * pydantic parses them straight to Decimal.
+ */
+export interface NewProductBody {
+  name: string;
+  display_name: string | null;
+  sku: string | null;
+  upc: string | null;
+  brand: string | null;
+  supplier: string | null;
+  category: string | null;
+  unit_cost: string;
+  stock_on_hand: number | null;
+  /** The opening price. Manager only; the API refuses it from anyone else. */
+  price: string | null;
+  agent_excluded: boolean;
+  location_id?: string | null;
 }
 
 /* ── Suggestions ──────────────────────────────────────────────────────── */
@@ -203,7 +262,6 @@ export interface Decision {
 
 export interface CategoryRule {
   category: string;
-  floor_pct: number | null;
   ceiling_pct: number | null;
   min_margin_pct: number;
   agent_may_suggest: boolean;
@@ -241,11 +299,14 @@ export interface Label {
   display_name?: string | null;
   slot_code: string | null;
   location_name?: string | null;
+  location_path?: string | null;
   status: LabelStatus;
   last_seen_at: string | null;
   rssi_dbm: number | null;
   battery_pct: number | null;
   firmware: string | null;
+  paired_at?: string | null;
+  created_at?: string;
   last_price?: string | null;
   as_published_at?: string | null;
   last_push_result?: 'pending' | 'confirmed' | 'failed' | null;
@@ -352,7 +413,200 @@ export interface StreamEvent {
     | 'settings'
     | 'rules'
     | 'users'
+    | 'locations'
     | 'guardrail';
   ts?: string;
   [key: string]: unknown;
+}
+
+
+/* ── Locations ────────────────────────────────────────────────────────────── */
+
+/** One level of the store's layout. Depth 1 is the top; positions go on the
+ *  deepest. The names are the store's own (Floor, Zone, Aisle, Bay …). */
+export interface LocationLevel {
+  depth: number;
+  name: string;
+}
+
+export interface LocationNode {
+  location_id: string;
+  parent_id: string | null;
+  name: string;
+  depth: number;
+  level_name: string;
+  sort_order: number;
+  /** Slots directly on this node. */
+  slot_count: number;
+  filled_count: number;
+  /** Slots anywhere beneath it — what a person means by a branch's count. */
+  descendant_slots: number;
+  descendant_filled: number;
+  /** Products linked to this node, and to it plus everything beneath it. */
+  product_count: number;
+  descendant_products: number;
+  path: string;
+  children: LocationNode[];
+}
+
+export interface LocationSlot {
+  slot_code: string;
+  location_id: string;
+  sort_order: number;
+  path: string;
+  label_id: string | null;
+  label_kind: LabelKind | null;
+  label_status: LabelStatus | null;
+  last_seen_at: string | null;
+  product_id: string | null;
+  product_name: string | null;
+  brand: string | null;
+  category: string | null;
+  current_price: string | null;
+}
+
+export interface LocationTree {
+  levels: LocationLevel[];
+  tree: LocationNode[];
+  slots: LocationSlot[];
+  totals: {
+    /** Node count per depth, keyed by the depth as a string. */
+    by_depth: Record<string, number>;
+    slots: number;
+    empty_slots: number;
+    products: number;
+  };
+}
+
+export interface LocationImpact {
+  location_id: string;
+  name: string;
+  depth: number;
+  locations: number;
+  slots: number;
+  labels: number;
+  paired_labels: number;
+  /** Products linked anywhere in the subtree; they become unassigned. */
+  products: number;
+  label_ids: string[];
+}
+
+/* ── Label detail ─────────────────────────────────────────────────────────── */
+
+export interface LabelPush {
+  id: number;
+  price: string;
+  line1: string;
+  line2: string;
+  result: 'pending' | 'confirmed' | 'failed';
+  published_at: string;
+  settled_at: string | null;
+  decision_id: string | null;
+}
+
+export interface LabelEvent {
+  event_type: string;
+  detail: Record<string, unknown>;
+  ts: string;
+}
+
+export interface LabelDetail {
+  label: Label & {
+    product_name?: string | null;
+    brand?: string | null;
+    unit_cost?: string | null;
+    location_name?: string | null;
+    location_path?: string | null;
+    product_location_id?: string | null;
+    product_location_path?: string | null;
+  };
+  pushes: LabelPush[];
+  events: LabelEvent[];
+  shelf_render: ShelfRender | null;
+  as_published_at: string | null;
+  writes_today?: number;
+}
+
+export interface BlinkResult {
+  label_id: string;
+  published: boolean;
+  queued: number;
+  note: string;
+}
+
+/* ── Users ────────────────────────────────────────────────────────────────── */
+
+export interface UserRow {
+  username: string;
+  email: string;
+  full_name: string;
+  role: Role;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  /** False while the account still holds the unusable seed hash. */
+  can_sign_in: boolean;
+  decisions: number;
+  /** Rules rows that reference this user, which block a hard delete. */
+  policy_rows: number;
+}
+
+/* ── Rules ────────────────────────────────────────────────────────────────── */
+
+export interface ChangeLimits {
+  max_change_pct: number;
+  max_changes_per_day: number;
+  min_hours_between: number;
+  proposal_ttl_hours: number;
+  set_by: string | null;
+  updated_at: string;
+}
+
+export interface RulesResponse {
+  limits: ChangeLimits | null;
+  categories: CategoryRule[];
+  unconfigured: { category: string; product_count: number }[];
+}
+
+export interface RulesPreview {
+  category: string;
+  products: number;
+  with_price: number;
+  without_price: number;
+  would_publish: number;
+  skipped_no_band: number;
+  min_price_changes: number;
+  max_price_changes: number;
+  individually_excluded: number;
+  would_unexclude: number;
+  would_exclude: number;
+  applies_agent_flag: boolean;
+  examples: {
+    product_id: string;
+    name: string;
+    min_price: string | null;
+    new_min_price: string | null;
+    max_price: string | null;
+    new_max_price: string | null;
+  }[];
+}
+
+/* ── Settings ─────────────────────────────────────────────────────────────── */
+
+export interface SettingsResponse {
+  store: Store | null;
+  broker: BrokerState;
+  effective: { host?: string; port?: number; tls?: boolean };
+  /** The stored broker config differs from what the bridge is using. */
+  restart_required: boolean;
+}
+
+export interface MqttTestResult {
+  ok: boolean;
+  probe: 'mqtt-connect' | 'tcp';
+  host: string;
+  port: number;
+  tls: boolean;
+  elapsed_ms: number;
+  detail: string;
 }

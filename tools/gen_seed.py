@@ -110,15 +110,17 @@ ACT = [
 ]
 
 CATEGORY_RULES = [
-    # category, floor_pct, ceiling_pct, min_margin_pct, agent_may_suggest
-    ('Dairy', 25, 15, 15, True),
-    ('Bakery', 40, 10, 12, True),
-    ('Produce', 35, 15, 14, True),
-    ('Pantry', 20, 20, 18, True),
-    ('Seafood', 30, 15, 16, True),
-    ('Electronics', 15, 10, 20, True),
-    ('Clothing', 50, 20, 30, True),
-    ('Household', 20, 15, 18, False),
+    # category, ceiling_pct, min_margin_pct, agent_may_suggest
+    # ceiling_pct is the headroom above the current price the agent may propose;
+    # min_margin_pct is the floor, from which each SKU's min_price is derived.
+    ('Dairy', 15, 15, True),
+    ('Bakery', 10, 12, True),
+    ('Produce', 15, 14, True),
+    ('Pantry', 20, 18, True),
+    ('Seafood', 15, 16, True),
+    ('Electronics', 10, 20, True),
+    ('Clothing', 20, 30, True),
+    ('Household', 15, 18, False),
 ]
 
 PACK_BY_CATEGORY = {
@@ -127,10 +129,14 @@ PACK_BY_CATEGORY = {
     'Electronics': 'electronics', 'Clothing': 'clothing',
 }
 
+# The store's levels, top first. A one-floor store; a manager can rename them
+# or, on an empty layout, add a Floor level above.
+LEVELS = ['Zone', 'Aisle', 'Bay']
+
 ZONES = [
-    ('zone-grocery', None, 'Grocery hall', 'zone', 1),
-    ('zone-tech', None, 'Electronics', 'zone', 2),
-    ('zone-apparel', None, 'Apparel', 'zone', 3),
+    ('zone-grocery', None, 'Grocery hall', 1, 1),
+    ('zone-tech', None, 'Electronics', 1, 2),
+    ('zone-apparel', None, 'Apparel', 1, 3),
 ]
 AISLES = {
     'A': ('zone-grocery', 'Aisle A - Chilled'),
@@ -254,22 +260,32 @@ VALUES (TRUE, 'SJSU Market', 'STORE-04', 'America/Los_Angeles', 'USD',
 
     # ── Locations ────────────────────────────────────────────────────────────
     w('-- ── Locations ───────────────────────────────────────────────────────────────')
-    w('INSERT INTO locations (location_id, parent_id, name, kind, sort_order) VALUES')
+    w('INSERT INTO location_levels (depth, name) VALUES')
+    w(',\n'.join(f'  ({d}, {q(n)})' for d, n in enumerate(LEVELS, start=1)) + ';\n')
+    w('INSERT INTO locations (location_id, parent_id, name, depth, sort_order) VALUES')
     loc_rows = [
-        f'  ({q(lid)}, {q(parent)}, {q(name)}, {q(kind)}, {order})'
-        for lid, parent, name, kind, order in ZONES
+        f'  ({q(lid)}, {q(parent)}, {q(name)}, {depth}, {order})'
+        for lid, parent, name, depth, order in ZONES
     ]
     for n, (letter, (zone, name)) in enumerate(sorted(AISLES.items()), start=1):
-        loc_rows.append(f"  ({q('aisle-' + letter.lower())}, {q(zone)}, {q(name)}, 'aisle', {n})")
+        loc_rows.append(f"  ({q('aisle-' + letter.lower())}, {q(zone)}, {q(name)}, 2, {n})")
+
+    # Bays, derived from the slot codes rather than invented: "A3-04" is bay 3
+    # of aisle A, position 4. That gives the third level real structure instead
+    # of one synthetic "Bay 1" hung under every aisle.
+    slot_codes = {lab[2] for lab in LAB if lab[2]} | {s[1] for s in SUG if s[1]}
+    bays: dict[str, tuple[str, str]] = {}
+    for code in slot_codes:
+        letter, bay_digit = code[0], code[1]
+        bays[f'bay-{letter.lower()}-{bay_digit}'] = (
+            'aisle-' + letter.lower(), f'Bay {letter}{bay_digit}')
+    for n, (bid, (parent, name)) in enumerate(sorted(bays.items()), start=1):
+        loc_rows.append(f"  ({q(bid)}, {q(parent)}, {q(name)}, 3, {n})")
     w(',\n'.join(loc_rows) + ';\n')
 
-    slots: dict[str, str] = {}
-    for lab in LAB:
-        if lab[2]:
-            slots[lab[2]] = 'aisle-' + lab[2][0].lower()
-    for s in SUG:
-        if s[1]:
-            slots.setdefault(s[1], 'aisle-' + s[1][0].lower())
+    # Slots hang off their bay, the lowest level, which is the only level the
+    # router lets a slot attach to.
+    slots = {c: f'bay-{c[0].lower()}-{c[1]}' for c in slot_codes}
 
     w('INSERT INTO location_slots (slot_code, location_id, sort_order) VALUES')
     w(',\n'.join(
@@ -279,11 +295,11 @@ VALUES (TRUE, 'SJSU Market', 'STORE-04', 'America/Los_Angeles', 'USD',
 
     # ── Category rules + change limits ───────────────────────────────────────
     w('-- ── Pricing rules ───────────────────────────────────────────────────────────')
-    w('INSERT INTO category_rules (category, floor_pct, ceiling_pct, min_margin_pct,'
+    w('INSERT INTO category_rules (category, ceiling_pct, min_margin_pct,'
       ' agent_may_suggest, set_by) VALUES')
     w(',\n'.join(
-        f'  ({q(c)}, {f}, {ce}, {mm}, {str(ag).upper()}, \'rchen\')'
-        for c, f, ce, mm, ag in CATEGORY_RULES
+        f'  ({q(c)}, {ce}, {mm}, {str(ag).upper()}, \'rchen\')'
+        for c, ce, mm, ag in CATEGORY_RULES
     ) + ';\n')
     w('INSERT INTO change_limits (id, max_change_pct, max_changes_per_day,'
       ' min_hours_between, proposal_ttl_hours, set_by)')
@@ -304,8 +320,9 @@ VALUES (TRUE, 'SJSU Market', 'STORE-04', 'America/Los_Angeles', 'USD',
         # The band is derived from the category rule, not picked by hand:
         #   floor  = the price at which the category margin floor is exactly met
         #   ceiling = current price + the category's permitted upward headroom
-        min_price = money(cost / (Decimal(1) - Decimal(rule[3]) / Decimal(100)))
-        max_price = money(price * (Decimal(1) + Decimal(rule[2]) / Decimal(100)))
+        # rule = (category, ceiling_pct, min_margin_pct, agent_may_suggest)
+        min_price = money(cost / (Decimal(1) - Decimal(rule[2]) / Decimal(100)))
+        max_price = money(price * (Decimal(1) + Decimal(rule[1]) / Decimal(100)))
         # Big-ticket lines always ask; small grocery moves are delegated. That is
         # a policy choice a manager makes, so it is seeded as one rather than
         # applied as a formula.
@@ -364,6 +381,19 @@ VALUES (TRUE, 'SJSU Market', 'STORE-04', 'America/Los_Angeles', 'USD',
             f' {q(firmware)}, {paired})'
         )
     w(',\n'.join(lab_rows) + ';\n')
+
+    # Each labelled product lives in the bay its label hangs in. Products with no
+    # label stay unassigned, which is the state a real catalogue starts in.
+    placed = sorted(
+        (pid_by_name[pname], slots[slot])
+        for _, pname, slot, *_ in LAB
+        if pname and slot and pname in pid_by_name
+    )
+    if placed:
+        w('-- Products live where their label hangs; unlabelled ones stay unassigned.')
+        w('UPDATE products p SET location_id = v.location_id FROM (VALUES')
+        w(',\n'.join(f'  ({q(pid)}, {q(loc)})' for pid, loc in placed))
+        w(') AS v(product_id, location_id) WHERE p.product_id = v.product_id;\n')
 
     w('INSERT INTO label_events (label_id, event_type, detail, ts) VALUES')
     ev_rows = []

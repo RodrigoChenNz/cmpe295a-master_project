@@ -12,6 +12,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { categoryToken, confidenceToken, marginToken, pctWhole, rssiBars, stockBar } from '../lib/format';
+import type { DonutSegment } from '../lib/format';
 import { useDismiss } from '../lib/useStream';
 import s from './ui.module.css';
 
@@ -19,7 +20,9 @@ import s from './ui.module.css';
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  size?: 'sm' | 'md';
+  /** `toolbar` is 34px — the height of a form control and of the ⋯ button, for
+   *  a button that stands in a row with them. */
+  size?: 'sm' | 'md' | 'toolbar';
   busy?: boolean;
 };
 
@@ -549,13 +552,19 @@ export function SkeletonRows({ rows = 7, columns = 5 }: { rows?: number; columns
 
 export function Modal({
   title,
+  subtitle,
   width = 420,
   onClose,
   children,
   footer,
 }: {
   title: string;
+  /** One line under the title, for a modal whose purpose needs explaining. */
+  subtitle?: string;
   width?: number;
+  /** Called by the close button, by Escape and by an outside click. A caller
+   *  with unsaved work can intercept here — see AddProductModal's
+   *  `requestClose`, which opens a confirmation instead of closing. */
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -567,9 +576,14 @@ export function Modal({
   // Move focus into the dialog, so a keyboard user is not left tabbing the page
   // behind the backdrop.
   useEffect(() => {
-    const first = ref.current?.querySelector<HTMLElement>(
-      'input, select, textarea, button, [tabindex]:not([tabindex="-1"])',
-    );
+    // `[data-autofocus]` first: the close button is earlier in the DOM than the
+    // body, so the plain query below lands on × — right for a confirmation,
+    // wrong for a form, where the first field is what someone came to fill in.
+    const first =
+      ref.current?.querySelector<HTMLElement>('[data-autofocus]') ??
+      ref.current?.querySelector<HTMLElement>(
+        'input, select, textarea, button, [tabindex]:not([tabindex="-1"])',
+      );
     first?.focus();
   }, []);
 
@@ -583,10 +597,13 @@ export function Modal({
         aria-labelledby={titleId}
         ref={ref}
       >
-        <div className={s.modalHead}>
-          <h2 id={titleId} className={s.modalTitle}>
-            {title}
-          </h2>
+        <div className={s.modalHead} data-stacked={subtitle ? '' : undefined}>
+          <div className={s.modalHeadText}>
+            <h2 id={titleId} className={s.modalTitle}>
+              {title}
+            </h2>
+            {subtitle && <p className={s.modalSubtitle}>{subtitle}</p>}
+          </div>
           <button type="button" className={s.modalClose} onClick={onClose} aria-label="Close">
             <Icon.cross />
           </button>
@@ -863,5 +880,302 @@ export function ShapLadder({
         </p>
       )}
     </div>
+  );
+}
+
+/* ── Toggle ───────────────────────────────────────────────────────────────
+ * A 34x20 track with a 16px knob, and the state spelled out beside it.
+ *
+ * A real `<button role="switch">` rather than a styled div: it is focusable,
+ * Space and Enter work, and screen readers announce the state. The word is a
+ * sibling rather than a tooltip for the same reason `StatusTag` carries both a
+ * bar and a word — state must be readable without colour.
+ */
+
+export function Toggle({
+  checked,
+  onChange,
+  onLabel,
+  offLabel,
+  disabled,
+  id,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  onLabel: string;
+  offLabel: string;
+  disabled?: boolean;
+  id?: string;
+}) {
+  return (
+    <span className={s.toggleWrap}>
+      <button
+        type="button"
+        id={id}
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        className={s.toggleTrack}
+        data-on={checked || undefined}
+        onClick={() => onChange(!checked)}
+      >
+        <span className={s.toggleKnob} aria-hidden="true" />
+      </button>
+      <span className={s.toggleLabel} data-on={checked || undefined}>
+        {checked ? onLabel : offLabel}
+      </span>
+    </span>
+  );
+}
+
+/* ── Donut ────────────────────────────────────────────────────────────────
+ * The operational-health ring. Arc maths lives in `donutSegments`; this draws
+ * what it returns and handles the empty case.
+ */
+
+export function Donut({
+  segments,
+  total,
+  centreLabel,
+  size = 148,
+  radius = 58,
+  strokeWidth = 14,
+  activeKey,
+}: {
+  segments: DonutSegment[];
+  total: number;
+  centreLabel: string;
+  size?: number;
+  radius?: number;
+  strokeWidth?: number;
+  activeKey?: string | null;
+}) {
+  const c = size / 2;
+  return (
+    <div className={s.donut} style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className={s.donutSvg}>
+        <circle cx={c} cy={c} r={radius} className={s.donutTrack} strokeWidth={strokeWidth} />
+        {segments.map((seg) => (
+          <circle
+            key={seg.key}
+            cx={c}
+            cy={c}
+            r={radius}
+            className={s.donutSeg}
+            data-tone={seg.tone}
+            // Dim the others when one is selected, so the filter is visible on
+            // the ring and not only in the legend.
+            data-dim={activeKey && activeKey !== seg.key ? '' : undefined}
+            strokeWidth={strokeWidth}
+            strokeDasharray={seg.dash}
+            strokeDashoffset={seg.offset}
+          />
+        ))}
+      </svg>
+      <div className={s.donutCentre}>
+        {/* Zero devices is a real count, not a missing one, so it reads 0
+            rather than an em dash. */}
+        <span className={`${s.donutTotal} tnum`}>{total}</span>
+        <span className={s.donutLabel}>{centreLabel}</span>
+      </div>
+      <span className="srOnly">
+        {total === 0
+          ? `No ${centreLabel.toLowerCase()}`
+          : segments.map((x) => `${x.label}: ${x.value}`).join(', ')}
+      </span>
+    </div>
+  );
+}
+
+/* ── Tree ─────────────────────────────────────────────────────────────────
+ * A generic, keyboard-navigable tree. Expansion state belongs to the caller so
+ * a screen can expand the path to a node it has just created.
+ */
+
+export interface TreeNode {
+  id: string;
+  label: string;
+  meta?: string;
+  children?: TreeNode[];
+}
+
+export function Tree({
+  nodes,
+  selectedId,
+  onSelect,
+  expandedIds,
+  onToggleExpand,
+  renderActions,
+  emptyMessage = 'Nothing here yet.',
+}: {
+  nodes: TreeNode[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  expandedIds: Set<string>;
+  onToggleExpand: (id: string, open: boolean) => void;
+  renderActions?: (node: TreeNode, depth: number) => React.ReactNode;
+  emptyMessage?: string;
+}) {
+  // Flattened in render order, which is what ↑ and ↓ have to walk: a visible
+  // row's neighbour is not its sibling when a branch above it is open.
+  const visible: { node: TreeNode; depth: number }[] = [];
+  const walk = (list: TreeNode[], depth: number) => {
+    for (const n of list) {
+      visible.push({ node: n, depth });
+      if (n.children?.length && expandedIds.has(n.id)) walk(n.children, depth + 1);
+    }
+  };
+  walk(nodes, 0);
+
+  if (nodes.length === 0) {
+    return <div className={s.treeEmpty}>{emptyMessage}</div>;
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent, node: TreeNode, depth: number) => {
+    const i = visible.findIndex((v) => v.node.id === node.id);
+    const focus = (idx: number) => {
+      const target = visible[idx];
+      if (!target) return;
+      e.preventDefault();
+      document.getElementById(`tree-${target.node.id}`)?.focus();
+    };
+    const hasKids = !!node.children?.length;
+    const open = expandedIds.has(node.id);
+
+    if (e.key === 'ArrowDown') focus(i + 1);
+    else if (e.key === 'ArrowUp') focus(i - 1);
+    else if (e.key === 'ArrowRight') {
+      if (hasKids && !open) {
+        e.preventDefault();
+        onToggleExpand(node.id, true);
+      } else if (hasKids) focus(i + 1);
+    } else if (e.key === 'ArrowLeft') {
+      if (hasKids && open) {
+        e.preventDefault();
+        onToggleExpand(node.id, false);
+      } else {
+        // Jump to the parent: the first row above us at a shallower depth.
+        for (let k = i - 1; k >= 0; k--) {
+          if (visible[k].depth < depth) return focus(k);
+        }
+      }
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect(node.id);
+    }
+  };
+
+  const render = (list: TreeNode[], depth: number): React.ReactNode =>
+    list.map((node) => {
+      const hasKids = !!node.children?.length;
+      const open = expandedIds.has(node.id);
+      return (
+        <li key={node.id} role="none">
+          <div
+            id={`tree-${node.id}`}
+            role="treeitem"
+            aria-expanded={hasKids ? open : undefined}
+            aria-selected={selectedId === node.id}
+            aria-level={depth + 1}
+            tabIndex={selectedId === node.id || (!selectedId && depth === 0 && list[0] === node) ? 0 : -1}
+            className={s.treeRow}
+            data-selected={selectedId === node.id || undefined}
+            style={{ paddingLeft: 8 + depth * 14 }}
+            onClick={() => onSelect(node.id)}
+            onKeyDown={(e) => onKeyDown(e, node, depth)}
+          >
+            <button
+              type="button"
+              className={s.treeCaret}
+              tabIndex={-1}
+              aria-hidden={!hasKids}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (hasKids) onToggleExpand(node.id, !open);
+              }}
+            >
+              {hasKids ? (open ? '▾' : '▸') : ''}
+            </button>
+            <span className={s.treeLabel} data-depth={depth}>
+              {node.label}
+            </span>
+            {node.meta && <span className={s.treeMeta}>{node.meta}</span>}
+            {renderActions && (
+              <span className={s.treeActions} onClick={(e) => e.stopPropagation()}>
+                {renderActions(node, depth)}
+              </span>
+            )}
+          </div>
+          {hasKids && open && (
+            <ul role="group" className={s.treeGroup}>
+              {render(node.children!, depth + 1)}
+            </ul>
+          )}
+        </li>
+      );
+    });
+
+  return (
+    <ul role="tree" className={s.tree}>
+      {render(nodes, 0)}
+    </ul>
+  );
+}
+
+/* ── ConfirmModal ─────────────────────────────────────────────────────────
+ * A destructive confirmation over the shared `Modal`.
+ *
+ * When this is stacked over another modal, the one underneath MUST return early
+ * from its own close handler while this is open — `useDismiss` listens on
+ * `document`, so Escape reaches both and this modal's backdrop lies outside the
+ * lower one's ref, which would make clicking "Cancel" close the form beneath.
+ * See DESIGN.md §5.
+ */
+
+export function ConfirmModal({
+  title,
+  body,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  tone = 'danger',
+  busy,
+  error,
+  onConfirm,
+  onClose,
+}: {
+  title: string;
+  body: React.ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  tone?: 'danger' | 'primary';
+  busy?: boolean;
+  error?: string | null;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      title={title}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {cancelLabel}
+          </Button>
+          <Button variant={tone === 'danger' ? 'danger' : 'primary'} busy={busy} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      <div className={s.confirmBody}>
+        {body}
+        {error && (
+          <p className={s.confirmError} role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    </Modal>
   );
 }

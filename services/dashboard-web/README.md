@@ -10,11 +10,13 @@ Talks only to `dashboard-api` over REST and one WebSocket. It never connects to
 MQTT directly.
 
 ```bash
-make up      # from the repo root — brings this up with everything else
-make fake    # proposals, explanations and label sightings, so it has a system
+make up      # from the repo root — brings this up with everything else, empty database
+make demo    # the same, with sample data and a fake publisher, so it has a system
 ```
 
-<http://localhost:5173>, signing in as the account named in your `.env`.
+<http://localhost:5173>. On an empty database you get the first-run screen, which
+creates the Super admin. In the demo, sign in as the account named in your `.env`.
+Invite links open `/join?token=…`.
 
 For local work outside Docker: `npm install && npm run dev`, with
 `VITE_API_URL` pointing at the API.

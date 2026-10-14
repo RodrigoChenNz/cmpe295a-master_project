@@ -209,10 +209,10 @@
   margin-left: auto;
 }
 
+/* No margin: the button's own 6px gap is the handoff's spacing. */
 .plus {
   font-size: 15px;
   line-height: 1;
-  margin-right: 2px;
 }
 
 .segmented {
