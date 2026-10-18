@@ -49,3 +49,5 @@ edge/msp432/Debug/
 edge/msp432/Release/
 *.out
 *.map
+
+edge/**/config.py
