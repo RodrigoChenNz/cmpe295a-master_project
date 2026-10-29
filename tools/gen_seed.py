@@ -239,10 +239,12 @@ def main() -> None:
 BEGIN;
 
 -- ── Store settings ──────────────────────────────────────────────────────────
-INSERT INTO store_settings (id, store_name, store_code, timezone, currency,
-                            mqtt_host, mqtt_port, mqtt_tls, label_stale_secs)
-VALUES (TRUE, 'SJSU Market', 'STORE-04', 'America/Los_Angeles', 'USD',
-        'mosquitto', 1883, FALSE, 900);
+-- Onboarded already, so the demo opens on the Dashboard, not the setup wizard.
+INSERT INTO store_settings (id, store_name, store_code, store_type, timezone, currency,
+                            mqtt_host, mqtt_port, mqtt_tls, label_stale_secs,
+                            onboarded_at)
+VALUES (TRUE, 'SJSU Market', 'STORE-04', 'grocery', 'America/Los_Angeles', 'USD',
+        'mosquitto', 1883, FALSE, 900, now());
 
 -- ── People ──────────────────────────────────────────────────────────────────
 -- password_hash '!' is an unusable sentinel: no password can ever verify
@@ -335,6 +337,11 @@ VALUES (TRUE, 'SJSU Market', 'STORE-04', 'America/Los_Angeles', 'USD',
             f" 'rchen', {ts(NOW - timedelta(days=21))}, FALSE)"
         )
     w(',\n'.join(prod_rows) + ';\n')
+
+    # The store's category list is whatever the sample catalogue uses.
+    w('INSERT INTO store_categories (name, sort_order)')
+    w('SELECT category, row_number() OVER (ORDER BY category)')
+    w('  FROM (SELECT DISTINCT category FROM products WHERE category IS NOT NULL) c;\n')
 
     # ── Product pack fields ──────────────────────────────────────────────────
     w('-- Field-pack values. Expiry is the one the agent actually reads.')

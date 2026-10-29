@@ -1,7 +1,11 @@
-/* 11 Settings — the store, and the link to the shelf network.
+/* 11 Settings — the store, its categories, and the link to the shelf network.
+ *
+ * The shelf network card is the super admin's alone: the broker is
+ * infrastructure, set once by whoever installed the system, and the API leaves
+ * its address out for everyone else.
  *
  * **Stored intent and running reality are two different facts, and this screen
- * shows both.** Saving a broker host records what a manager wants; the MQTT
+ * shows both.** Saving a broker host records what a super admin wants; the MQTT
  * bridge keeps using its process environment until the service restarts. A form
  * that showed only the stored value would imply this service is talking to it —
  * the same failure as a shelf mirror that disagrees with the glass beside it.
@@ -23,13 +27,16 @@ import {
   Button, ErrorState, SkeletonRows, StatusTag, Toggle,
 } from '../components/ui';
 import s from './Settings.module.css';
-import type { MqttTestResult } from '../lib/types';
+import { STORE_PRESETS } from '../lib/storePresets';
+import type { MqttTestResult, StoreType } from '../lib/types';
+import { CategoryListEditor } from '../components/CategoryListEditor';
+import { TimezoneSelect } from '../components/TimezoneSelect';
 
 interface SettingsDraft extends Record<string, unknown> {
   store_name: string;
   store_code: string;
+  store_type: StoreType | '';
   timezone: string;
-  currency: string;
   mqtt_host: string;
   mqtt_port: string;
   mqtt_tls: boolean;
@@ -39,6 +46,7 @@ interface SettingsDraft extends Record<string, unknown> {
 export function Settings() {
   const { user, toast, reloadMeta, meta } = useShell();
   const canEdit = isManagerRole(user.role);
+  const seesNetwork = user.role === 'superadmin';
 
   const res = useResource(() => api.settings(), []);
   useStreamEvents(['settings', 'broker'], res.reload);
@@ -56,13 +64,13 @@ export function Settings() {
     () =>
       store
         ? {
-            store_name: store.store_name,
+            store_name: store.store_name ?? '',
             store_code: store.store_code ?? '',
+            store_type: store.store_type ?? '',
             timezone: store.timezone,
-            currency: store.currency,
-            mqtt_host: store.mqtt_host,
-            mqtt_port: String(store.mqtt_port),
-            mqtt_tls: store.mqtt_tls,
+            mqtt_host: store.mqtt_host ?? '',
+            mqtt_port: String(store.mqtt_port ?? ''),
+            mqtt_tls: store.mqtt_tls ?? false,
             label_stale_secs: String(store.label_stale_secs),
           }
         : null,
@@ -98,13 +106,20 @@ export function Settings() {
       await api.saveSettings({
         store_name: form.draft.store_name.trim(),
         store_code: form.draft.store_code.trim() || null,
+        store_type: form.draft.store_type || null,
         timezone: form.draft.timezone.trim(),
-        currency: form.draft.currency.trim().toUpperCase(),
-        mqtt_host: form.draft.mqtt_host.trim(),
-        mqtt_port: Number(form.draft.mqtt_port),
-        mqtt_tls: form.draft.mqtt_tls,
         label_stale_secs: Number(form.draft.label_stale_secs),
-      } as never);
+      });
+      // The broker has its own endpoint, super admin only; sent only when it
+      // was actually edited.
+      const d = form.dirtyKeys;
+      if (seesNetwork && (d.has('mqtt_host') || d.has('mqtt_port') || d.has('mqtt_tls'))) {
+        await api.saveNetwork({
+          mqtt_host: form.draft.mqtt_host.trim(),
+          mqtt_port: Number(form.draft.mqtt_port),
+          mqtt_tls: form.draft.mqtt_tls,
+        });
+      }
       form.commit(form.draft);
       // The shell shows the store name and the broker banner, so it has to hear.
       reloadMeta();
@@ -182,29 +197,40 @@ export function Settings() {
             />
           </Field>
           <Field
+            label="Store type"
+            hint="Chosen during setup. It only seeded the suggested layout and pricing rules; changing it here changes neither."
+            dirty={form.dirtyKeys.has('store_type')}
+          >
+            <select
+              className="field"
+              value={form.draft.store_type}
+              disabled={!canEdit}
+              onChange={(e) => set('store_type', e.target.value as StoreType | '')}
+            >
+              {!form.draft.store_type && <option value="">Not set</option>}
+              {STORE_PRESETS.map((p) => (
+                <option key={p.type} value={p.type}>{p.label}</option>
+              ))}
+            </select>
+          </Field>
+          <Field
             label="Timezone"
             hint="Used for the agent's daily windows and the activity log's day boundaries."
             dirty={form.dirtyKeys.has('timezone')}
           >
-            <input
-              className={`field ${s.mono}`}
+            <TimezoneSelect
               value={form.draft.timezone}
               disabled={!canEdit}
-              onChange={(e) => set('timezone', e.target.value)}
+              onChange={(zone) => set('timezone', zone)}
             />
           </Field>
+          {/* Not editable: the shared price contract (contracts/price.schema.json)
+              allows USD only, and every published price carries it. */}
           <Field
             label="Currency"
-            hint="Recorded for reports. Prices are formatted with $ throughout the console; changing this does not reformat them yet."
-            dirty={form.dirtyKeys.has('currency')}
+            hint="Fixed by the shared price contract. Another currency needs a contract change agreed by the team."
           >
-            <input
-              className={`field ${s.mono}`}
-              value={form.draft.currency}
-              maxLength={3}
-              disabled={!canEdit}
-              onChange={(e) => set('currency', e.target.value.toUpperCase())}
-            />
+            <input className={`field ${s.mono}`} value={store?.currency ?? 'USD'} disabled readOnly />
           </Field>
         </div>
 
@@ -222,7 +248,10 @@ export function Settings() {
         </div>
       </section>
 
-      {/* ── Shelf network ──────────────────────────────────────────────── */}
+      <CategoriesCard canEdit={canEdit} />
+
+      {/* ── Shelf network (super admin only) ───────────────────────────── */}
+      {seesNetwork && (
       <section className={`card ${s.card}`} data-down={broker.enabled && !broker.connected ? '' : undefined}>
         <div className={s.netHead}>
           <h2 className={s.cardTitle}>Shelf network (MQTT)</h2>
@@ -290,9 +319,9 @@ export function Settings() {
           <p className={s.mismatch}>
             This service is connected to{' '}
             <span className={s.mono}>
-              {effective.host}:{effective.port}
+              {effective?.host}:{effective?.port}
             </span>
-            {effective.tls ? ' over TLS' : ' without TLS'}. What you save here
+            {effective?.tls ? ' over TLS' : ' without TLS'}. What you save here
             takes effect when the service restarts.
           </p>
         )}
@@ -307,6 +336,7 @@ export function Settings() {
           </Fact>
         </dl>
       </section>
+      )}
 
       {/* ── Labels ─────────────────────────────────────────────────────── */}
       <section className={`card ${s.card}`}>
@@ -361,6 +391,60 @@ function Field({
       {children}
       {hint && <span className={s.fieldHint}>{hint}</span>}
     </div>
+  );
+}
+
+/** The store's category list. Saved on its own, because it is a list rather
+ *  than a field and its Save says exactly what it changes. */
+function CategoriesCard({ canEdit }: { canEdit: boolean }) {
+  const { toast } = useShell();
+  const res = useResource(() => api.categories(), []);
+  useStreamEvents(['categories', 'products'], res.reload);
+  const [draft, setDraft] = useState<string[] | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const saved = useMemo(() => res.data?.categories.map((c) => c.name) ?? [], [res.data]);
+  const counts = useMemo(
+    () => Object.fromEntries((res.data?.categories ?? []).map((c) => [c.name, c.product_count])),
+    [res.data],
+  );
+  const names = draft ?? saved;
+  const dirty = draft !== null && draft.join('\u0000') !== saved.join('\u0000');
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.saveCategories(names);
+      setDraft(null);
+      res.reload();
+      toast('Categories saved.');
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not save the categories.', 'bad');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className={`card ${s.card}`}>
+      <h2 className={s.cardTitle}>Categories</h2>
+      <p className={s.cardSub}>
+        What the Add product form offers. Removing one only stops it being
+        suggested; products keep their category. Pricing rules per category are
+        on <Link to="/rules">Rules</Link>.
+      </p>
+      {res.error ? (
+        <p className={s.mismatch}>{res.error}</p>
+      ) : (
+        <CategoryListEditor names={names} counts={counts} disabled={!canEdit} onChange={setDraft} />
+      )}
+      {canEdit && dirty && (
+        <div className={s.cardActions}>
+          <Button variant="secondary" onClick={() => setDraft(null)}>Discard</Button>
+          <Button busy={saving} onClick={save}>Save categories</Button>
+        </div>
+      )}
+    </section>
   );
 }
 

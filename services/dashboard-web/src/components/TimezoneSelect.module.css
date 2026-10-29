@@ -1,0 +1,189 @@
+/* Trigger styled as a .field, panel styled as the app's menus (ui.module.css
+ * .menu), search box as SearchInput. */
+
+.wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* ── Trigger ────────────────────────────────────────────────────────────── */
+
+.trigger {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font-size: var(--fs-card);
+  cursor: pointer;
+}
+.trigger:disabled {
+  color: var(--ink-2);
+  background: var(--subtle);
+  cursor: not-allowed;
+}
+.trigger[aria-expanded='true'] {
+  border-color: var(--ac);
+}
+
+.triggerText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.place {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.region {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+
+.offset {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.chevron {
+  flex: none;
+  display: inline-flex;
+  color: var(--ink-muted);
+  transform: rotate(90deg);
+  transition: transform 120ms var(--ease);
+}
+.chevron[data-open] {
+  transform: rotate(-90deg);
+}
+
+/* ── Panel ──────────────────────────────────────────────────────────────── */
+
+.panel {
+  position: absolute;
+  top: 46px;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--rl);
+  box-shadow: var(--shadow-menu);
+  overflow: hidden;
+}
+
+.searchWrap {
+  position: relative;
+  display: flex;
+  padding: 10px;
+  border-bottom: 1px solid var(--divider);
+}
+.searchIcon {
+  position: absolute;
+  left: 21px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: block;
+  pointer-events: none;
+  color: var(--ink-muted);
+}
+.search {
+  width: 100%;
+  padding-left: 30px;
+}
+.search::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.list {
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 4px;
+}
+
+.group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 13px 5px;
+  background: var(--surface);
+  border-top: 1px solid var(--divider);
+}
+.list > div:first-child .group {
+  border-top: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px 7px 8px;
+  font-size: var(--fs-body);
+  cursor: pointer;
+}
+.option[data-active] {
+  background: var(--hover);
+}
+.option[aria-selected='true'] .place {
+  font-weight: 600;
+}
+
+.check {
+  width: 16px;
+  flex: none;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--ac);
+}
+
+.optionText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.zoneName {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  margin: 0;
+  padding: 14px 13px;
+  font-size: var(--fs-body);
+  color: var(--ink-muted);
+}
+
+/* ── Below the field ────────────────────────────────────────────────────── */
+
+.now {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+
+.time {
+  font-family: var(--font-mono);
+  color: var(--ink-2);
+}

@@ -216,14 +216,20 @@ export function Labels() {
           </div>
 
           <dl className={s.networkRows}>
-            <Row label="Broker">
-              {/* What the running bridge is using, not what Settings stores —
-                  they differ until the service restarts. */}
-              <span className={s.mono}>
-                {network?.host ?? '—'}:{network?.port ?? '—'}
-              </span>
-            </Row>
-            <Row label="Protocol">{network?.tls ? 'MQTT over TLS' : 'MQTT, no TLS'}</Row>
+            {/* The broker's address is the super admin's; the API leaves it
+                out for everyone else. */}
+            {user.role === 'superadmin' && (
+              <>
+                <Row label="Broker">
+                  {/* What the running bridge is using, not what Settings stores —
+                      they differ until the service restarts. */}
+                  <span className={s.mono}>
+                    {network?.host ?? '—'}:{network?.port ?? '—'}
+                  </span>
+                </Row>
+                <Row label="Protocol">{network?.tls ? 'MQTT over TLS' : 'MQTT, no TLS'}</Row>
+              </>
+            )}
             <Row label="Last message">
               {network?.last_message_at ? relative(network.last_message_at) : 'Nothing yet'}
             </Row>
@@ -236,11 +242,13 @@ export function Labels() {
             </p>
           )}
 
-          <div className={s.networkFoot}>
-            <Button size="toolbar" variant="ghost" onClick={() => navigate('/settings')}>
-              Broker settings
-            </Button>
-          </div>
+          {user.role === 'superadmin' && (
+            <div className={s.networkFoot}>
+              <Button size="toolbar" variant="ghost" onClick={() => navigate('/settings')}>
+                Broker settings
+              </Button>
+            </div>
+          )}
         </section>
       </div>
 

@@ -1,8 +1,10 @@
 /* The store's layout levels, top first — Zone › Aisle › Bay, or with a Floor
  * above, or whatever this store calls them.
  *
- * Used twice: as the first thing a manager does on a new store (Locations shows
- * it instead of an empty tree), and later behind "Edit levels". Renaming is
+ * Used three times: in the setup wizard (`compact`: no explanatory preview, a
+ * Back button, the buttons pinned to the bottom of the card), as the first
+ * thing a manager does on a store with no levels yet (Locations shows it
+ * instead of an empty tree), and later behind "Edit levels". Renaming is
  * always allowed. Adding or removing a level is only possible while the layout
  * is empty, because every existing location sits at a depth that would
  * otherwise start meaning something else; the service enforces the same rule.
@@ -23,6 +25,8 @@ export function LevelsEditor({
   saveLabel,
   onSave,
   onCancel,
+  onBack,
+  compact = false,
 }: {
   initial: string[];
   /** Locations exist, so only renaming is allowed. */
@@ -32,6 +36,10 @@ export function LevelsEditor({
   saveLabel: string;
   onSave: (names: string[]) => void;
   onCancel?: () => void;
+  /** The wizard's Back. Unlike onCancel it does not change when Save is
+   *  allowed: going back is not discarding. */
+  onBack?: () => void;
+  compact?: boolean;
 }) {
   const [names, setNames] = useState<string[]>(initial);
   const trimmed = names.map((n) => n.trim());
@@ -49,7 +57,7 @@ export function LevelsEditor({
     setNames((v) => [...v.slice(0, at), '', ...v.slice(at)]);
 
   return (
-    <div className={s.editor}>
+    <div className={s.editor} data-compact={compact || undefined}>
       {canAdd && (
         <button type="button" className={s.addLevel} onClick={() => insert(0)}>
           + Add a level above {trimmed[0] || 'the top'}
@@ -93,6 +101,7 @@ export function LevelsEditor({
         </button>
       )}
 
+      {!compact && (
       <div className={s.preview}>
         <span className="monoLabel">Your layout</span>
         <span className={s.previewPath}>{trimmed.map((n) => n || '…').join(' › ')}</span>
@@ -102,6 +111,7 @@ export function LevelsEditor({
           <strong>{trimmed[trimmed.length - 1] || '…'}</strong>.
         </span>
       </div>
+      )}
 
       {depthLocked && (
         <p className={s.locked}>
@@ -116,6 +126,9 @@ export function LevelsEditor({
       )}
 
       <div className={s.actions}>
+        {onBack && (
+          <Button variant="ghost" className={s.back} onClick={onBack}>Back</Button>
+        )}
         {onCancel && (
           <Button variant="secondary" onClick={onCancel}>Cancel</Button>
         )}

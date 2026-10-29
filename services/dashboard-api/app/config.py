@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     session_cookie_name: str = "shelfiq_session"
     session_cookie_secure: bool = False
     session_ttl_hours: int = 12
+    # "Remember me" on the sign-in form: a cookie that survives closing the
+    # browser, and a session the server honours for this many days.
+    session_remember_days: int = 30
 
     # On startup, set a real password hash for this user from this password, so
     # that no committed file in the repo contains a working credential. If the

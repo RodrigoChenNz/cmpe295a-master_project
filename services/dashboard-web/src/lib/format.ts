@@ -255,6 +255,12 @@ export const ROLE_LABEL: Record<string, string> = {
   viewer: 'Read only',
 };
 
+/** The browser tab's title. The store's name once it has one; never a
+ *  placeholder name that looks as if somebody chose it. */
+export function setPageTitle(storeName: string | null | undefined): void {
+  document.title = storeName ? `ShelfIQ — ${storeName}` : 'ShelfIQ';
+}
+
 /* ── Store layout levels ──────────────────────────────────────────────────── */
 
 /** The store's name for a depth, e.g. 3 → "Aisle". */

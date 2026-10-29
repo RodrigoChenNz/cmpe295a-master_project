@@ -88,6 +88,9 @@
   border-radius: var(--r);
   background: var(--page);
   flex: none;
+  /* Where the setup wizard's closing wipe lands (BrandWipe into="logo").
+   * No effect outside a view transition. */
+  view-transition-name: brand-mark;
 }
 .brandText {
   font-size: 15px;
@@ -261,6 +264,8 @@
   width: 30px;
   height: 30px;
   flex: none;
+  /* Where sign-in's wipe lands (BrandWipe into="account"). */
+  view-transition-name: account-mark;
   display: flex;
   align-items: center;
   justify-content: center;

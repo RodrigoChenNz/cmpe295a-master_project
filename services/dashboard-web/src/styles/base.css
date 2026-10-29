@@ -186,3 +186,18 @@ input[type='checkbox'] {
 .hideScrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ── View transitions ─────────────────────────────────────────────────────
+ * Started only by BrandWipe: its full-screen cover shrinks into the console's
+ * logo (end of setup) or your avatar (sign-in) while the page cross-fades
+ * beneath it. */
+::view-transition-group(brand-mark),
+::view-transition-group(account-mark) {
+  animation-duration: 560ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 380ms;
+}
+

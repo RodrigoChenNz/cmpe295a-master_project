@@ -1,0 +1,485 @@
+/* The setup wizard. Builds on SignIn.module.css (screen, card, field, error)
+ * and adds only what a multi-step form needs: a wider column, the stepper, and
+ * the tables. */
+
+/* Pinned to the top rather than centred: a centred column moves up and down
+ * every time a step is taller or shorter than the last. */
+.screen {
+  align-items: flex-start;
+  padding-top: max(24px, 8vh);
+}
+
+.column {
+  width: 720px;
+  gap: 20px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.who {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+.signOut {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--ac);
+  cursor: pointer;
+}
+
+/* ── Stepper ──────────────────────────────────────────────────────────────
+ * Six pills across the card's width, joined by bridges that stretch to fill
+ * the space between them. Current is dark, done is green with a check, the
+ * rest are outlined. A bridge turns green once the step it leads to is done. */
+
+.stepper {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Pills keep their natural width but may shrink (the name ellipsises) before
+ * the row would overflow the column. */
+.stepItem {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.bridge {
+  flex: 1;
+  min-width: 10px;
+  height: 2px;
+  background: var(--border-card);
+  transition: background-color 300ms var(--ease);
+}
+.bridge[data-filled] {
+  background: var(--green);
+}
+
+.pill {
+  max-width: 100%;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 15px 0 13px;
+  border-radius: 18px;
+  border: 1px solid var(--border-card);
+  background: var(--surface);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 300ms var(--ease), border-color 300ms var(--ease),
+    color 300ms var(--ease);
+}
+
+.pillNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stepName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pill[data-state='current'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+  cursor: default;
+}
+
+.pill[data-state='done'] {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--surface);
+}
+
+/* Not reached yet: shown, but not a way in. */
+.pill:disabled {
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+.pill:not(:disabled):not([data-state]):hover {
+  background: var(--hover);
+}
+.pill[data-state='done']:hover {
+  background: var(--green-text);
+  border-color: var(--green-text);
+}
+
+/* ── Closing sequence ─────────────────────────────────────────────────────
+ * Phase 1: every pill goes green, left to right (staggered by --i).
+ * Phase 2: the pills slide to the centre (--dx, measured) and fade, the
+ *          bridges fade, and one "All set" pill takes their place.
+ * Phase 3: the logo mark grows to cover the screen (BrandWipe). */
+
+.stepperWrap {
+  position: relative;
+}
+
+.stepper[data-finish] .pill,
+.stepper[data-finish] .bridge {
+  transition-delay: calc(var(--i) * 70ms);
+}
+
+.stepper[data-finish] .stepItem,
+.stepper[data-finish] .bridge {
+  transition: transform 380ms var(--ease), opacity 260ms var(--ease) 120ms,
+    background-color 300ms var(--ease) calc(var(--i) * 70ms);
+}
+.stepper[data-merged] .stepItem {
+  transform: translateX(var(--dx));
+  opacity: 0;
+}
+.stepper[data-merged] .bridge {
+  opacity: 0;
+  transition-delay: 0ms;
+}
+
+.allSet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 18px 0 15px;
+  border-radius: 18px;
+  background: var(--green);
+  color: var(--surface);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  animation: allSetIn 360ms var(--ease) 220ms both;
+}
+@keyframes allSetIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* The e-ink label. Centred in the card, which keeps its height. */
+.ready {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.readyBezel {
+  align-self: center;
+  animation: bezelIn 280ms var(--ease) both;
+}
+@keyframes bezelIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.readyPanel {
+  position: relative;
+}
+
+/* A full e-ink refresh: the panel inverts black, white, black, white in hard
+ * steps (what the waveform does to clear ghosting), then the new image
+ * develops out of the white. */
+.refresh {
+  position: absolute;
+  inset: 0;
+  animation: inkRefresh 950ms 260ms both;
+}
+@keyframes inkRefresh {
+  0% {
+    background: #141412;
+    opacity: 1;
+    animation-timing-function: step-end;
+  }
+  12% {
+    background: #e7e5dc;
+    animation-timing-function: step-end;
+  }
+  24% {
+    background: #141412;
+    animation-timing-function: step-end;
+  }
+  36% {
+    background: #e7e5dc;
+    opacity: 1;
+    animation-timing-function: ease-out;
+  }
+  100% {
+    background: #e7e5dc;
+    opacity: 0;
+  }
+}
+
+.readyCaption {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  animation: captionIn 400ms var(--ease) 900ms both;
+}
+@keyframes captionIn {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ── Panes ──────────────────────────────────────────────────────────────── */
+
+/* Horizontal clip only: the timezone list drops below the card and must not
+ * be cut off, but a pane sliding in must not widen the page. */
+/* One height for every step, so the card does not grow and shrink as you
+ * move; a step with more in it (a long invite list) still extends it. The
+ * horizontal clip keeps a sliding pane from widening the page without cutting
+ * off the timezone list, which drops below the card. */
+.card {
+  min-height: 460px;
+  overflow-x: clip;
+}
+
+.pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: paneForward 260ms var(--ease) both;
+}
+.pane[data-dir='back'] {
+  animation-name: paneBack;
+}
+
+@keyframes paneForward {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes paneBack {
+  from {
+    opacity: 0;
+    transform: translateX(-32px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane {
+    animation: none;
+  }
+  .pill,
+  .bridge,
+  .stepItem {
+    transition: none;
+  }
+}
+
+/* ── Step furniture ─────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+.backButton {
+  margin-right: auto;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* ── Store type ─────────────────────────────────────────────────────────── */
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.typeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  text-align: left;
+  font: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border-input);
+  border-radius: var(--r);
+  cursor: pointer;
+}
+.typeCard:hover {
+  background: var(--hover);
+}
+.typeCard[data-on] {
+  border-color: var(--ac);
+  box-shadow: inset 0 0 0 1px var(--ac);
+}
+.typeBlurb {
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+.typeName {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+/* ── Team ───────────────────────────────────────────────────────────────── */
+
+.remove {
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.remove:hover {
+  color: var(--red-deep);
+}
+
+.addRow {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: var(--fs-xs);
+  color: var(--ac);
+  cursor: pointer;
+}
+
+.inviteRow {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 150px 28px;
+  gap: 8px;
+  align-items: center;
+}
+.inviteRow input,
+.inviteRow select {
+  height: 36px;
+  min-width: 0;
+}
+.rowError {
+  grid-column: 1 / -1;
+  font-size: var(--fs-xs);
+  color: var(--red-deep);
+}
+
+.issued {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--r);
+  background: var(--subtle);
+}
+.issuedRow {
+  display: grid;
+  grid-template-columns: 180px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.issuedRow input {
+  height: 34px;
+  min-width: 0;
+}
+.issuedWho {
+  font-size: var(--fs-xs);
+  color: var(--ink-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Review ─────────────────────────────────────────────────────────────── */
+
+.review {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.reviewRow {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--divider);
+}
+.reviewRow dd {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--ink);
+}
+.edit {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: var(--fs-xs);
+  color: var(--ac);
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  /* Six names do not fit a phone; the numbers and bridges still do. */
+  .pill:not([data-state='current']) .stepName {
+    display: none;
+  }
+  .pill {
+    padding: 0 12px;
+  }
+  .grid2,
+  .inviteRow,
+  .issuedRow,
+  .reviewRow {
+    grid-template-columns: 1fr;
+  }
+}

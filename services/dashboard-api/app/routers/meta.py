@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from .. import auth, bus, db, serialize
@@ -53,15 +53,40 @@ async def meta(
 
     return {
         "user": user.as_dict() if user else None,
-        "store": serialize.row(store) if store else None,
+        "store": _store_for(user, store),
         "counts": dict(counts) if counts else {},
-        "broker": broker,
+        # Whether the shelf network is up is everyone's business (the banner);
+        # where it lives is the super admin's.
+        "broker": broker if _sees_network(user) else _without(broker, _BROKER_ADDRESS),
         "sample_data": serialize.row(sample) if sample else None,
         "layout": {
             "configured": bool(levels),
             "levels": [dict(r) for r in levels],
         },
+        "onboarding": {"completed": bool(store and store["onboarded_at"])},
     }
+
+
+# The broker's address is infrastructure, set once by whoever installed the
+# system. Managers and staff see whether the shelf network is up, never where it
+# is or how to change it.
+_NETWORK_FIELDS = ("mqtt_host", "mqtt_port", "mqtt_tls")
+_BROKER_ADDRESS = ("host", "port", "tls")
+
+
+def _sees_network(user: auth.CurrentUser | None) -> bool:
+    return bool(user and user.role == "superadmin")
+
+
+def _without(d: dict, keys: tuple[str, ...]) -> dict:
+    return {k: v for k, v in d.items() if k not in keys}
+
+
+def _store_for(user: auth.CurrentUser | None, row) -> dict | None:
+    if not row:
+        return None
+    store = serialize.row(row)
+    return store if _sees_network(user) else _without(store, _NETWORK_FIELDS)
 
 
 async def _has_marker_table() -> bool:
@@ -70,16 +95,21 @@ async def _has_marker_table() -> bool:
     )
 
 
+StoreType = Literal[
+    "grocery", "convenience", "pharmacy", "electronics", "hardware", "apparel", "other"
+]
+
+
 class StoreSettingsBody(BaseModel):
     store_name: str = Field(min_length=1, max_length=120)
     store_code: str | None = Field(default=None, max_length=40)
+    store_type: StoreType | None = None
     timezone: str = Field(min_length=1, max_length=64)
-    # The column has existed since the first migration and no endpoint has ever
-    # accepted it, so the Settings field would be permanently read-only.
-    currency: str = Field(default="USD", pattern=r"^[A-Z]{3}$")
-    mqtt_host: str = Field(min_length=1, max_length=255)
-    mqtt_port: int = Field(ge=1, le=65535)
-    mqtt_tls: bool = False
+    # USD only, because the shared MQTT contracts are: price.schema.json and
+    # proposal.schema.json both pin `currency` to ["USD"], and gate.py publishes
+    # exactly that. Storing anything else would describe a store whose every
+    # published price breaks the contract. Widening it is a contract change.
+    currency: Literal["USD"] = "USD"
     label_stale_secs: int = Field(ge=30, le=86400)
 
 
@@ -88,33 +118,91 @@ async def update_store(
     body: StoreSettingsBody,
     user: Annotated[auth.CurrentUser, Depends(auth.require_manager)],
 ) -> dict:
-    # Changing mqtt_host here records the manager's intent; the running bridge
-    # still uses the process environment, because a bad value typed into a form
-    # must not be able to cut the service off from the bus until someone
-    # restarts it deliberately.
+    # The broker is not in here: it has its own endpoint, super admin only.
     row = await db.fetchrow(
         """UPDATE store_settings
               SET store_name = $1, store_code = $2, timezone = $3,
-                  mqtt_host = $4, mqtt_port = $5, mqtt_tls = $6,
-                  label_stale_secs = $7, currency = $8, updated_at = now()
+                  label_stale_secs = $4, currency = $5, store_type = $6,
+                  updated_at = now()
             WHERE id
         RETURNING *""",
         body.store_name,
         body.store_code,
         body.timezone,
+        body.label_stale_secs,
+        body.currency,
+        body.store_type,
+    )
+    bus.emit("settings", set_by=user.username)
+    return {"store": _store_for(user, row)}
+
+
+class NetworkSettingsBody(BaseModel):
+    mqtt_host: str = Field(min_length=1, max_length=255)
+    mqtt_port: int = Field(ge=1, le=65535)
+    mqtt_tls: bool = False
+
+
+@router.put("/settings/network")
+async def update_network(
+    body: NetworkSettingsBody,
+    user: Annotated[auth.CurrentUser, Depends(auth.require_superadmin)],
+) -> dict:
+    # This records intent; the running bridge still uses the process
+    # environment, because a bad value typed into a form must not be able to
+    # cut the service off from the bus until someone restarts it deliberately.
+    row = await db.fetchrow(
+        """UPDATE store_settings
+              SET mqtt_host = $1, mqtt_port = $2, mqtt_tls = $3, updated_at = now()
+            WHERE id
+        RETURNING *""",
         body.mqtt_host,
         body.mqtt_port,
         body.mqtt_tls,
-        body.label_stale_secs,
-        body.currency,
     )
     bus.emit("settings", set_by=user.username)
-    return {"store": serialize.row(row) if row else None}
+    return {"store": _store_for(user, row)}
+
+
+@router.post("/onboarding/complete")
+async def complete_onboarding(
+    user: Annotated[auth.CurrentUser, Depends(auth.require_superadmin)],
+) -> dict:
+    """Close the first-run store setup wizard and open the console.
+
+    Refused until the two things the wizard cannot skip are done: the store has
+    a name, and its layout levels exist (no product can be added without them).
+    Everything else the wizard offers has a working default. Idempotent: a
+    second call keeps the first completion's time and author.
+    """
+    store = await db.fetchrow("SELECT store_name, onboarded_at FROM store_settings LIMIT 1")
+    if store is None or not store["store_name"]:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Name the store before finishing setup.")
+    if not await db.fetchval("SELECT EXISTS (SELECT 1 FROM location_levels)"):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Set up the store layout before finishing setup."
+        )
+    if store["onboarded_at"] is None:
+        await db.execute(
+            """UPDATE store_settings
+                  SET onboarded_at = now(), onboarded_by = $1, updated_at = now()
+                WHERE id AND onboarded_at IS NULL""",
+            user.username,
+        )
+        await db.execute(
+            """INSERT INTO agent_audit_log (event_type, actor, detail)
+               VALUES ('guardrail_set', $1, $2)""",
+            user.username,
+            {"scope": "store", "onboarding": "completed"},
+        )
+        bus.emit("settings", set_by=user.username)
+    row = await db.fetchrow("SELECT * FROM store_settings LIMIT 1")
+    return {"store": _store_for(user, row)}
 
 
 @router.get("/settings/store")
 async def get_store_settings(
-    _user: Annotated[auth.CurrentUser, Depends(auth.current_user)],
+    user: Annotated[auth.CurrentUser, Depends(auth.current_user)],
 ) -> dict:
     """The stored settings, and what the running service is actually doing.
 
@@ -122,9 +210,17 @@ async def get_store_settings(
     `update_store` records a manager's intent, but the MQTT bridge keeps using
     its process environment until the service restarts. A form that showed only
     the stored host would imply this service is talking to it.
+
+    Everyone but a super admin gets the store without the broker's address and
+    without the stored-versus-running comparison, which is all about it.
     """
     store = await db.fetchrow("SELECT * FROM store_settings LIMIT 1")
     broker = bus.broker_state() | {"queued": bus.queued_count()}
+    if not _sees_network(user):
+        return {
+            "store": _store_for(user, store),
+            "broker": _without(broker, _BROKER_ADDRESS),
+        }
     return {
         "store": serialize.row(store) if store else None,
         "broker": broker,
@@ -153,7 +249,7 @@ class MqttTestBody(BaseModel):
 @router.post("/settings/mqtt/test")
 async def test_mqtt(
     body: MqttTestBody,
-    _user: Annotated[auth.CurrentUser, Depends(auth.require_manager)],
+    _user: Annotated[auth.CurrentUser, Depends(auth.require_superadmin)],
 ) -> dict:
     """Open a real MQTT connection and close it again.
 
