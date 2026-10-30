@@ -244,6 +244,12 @@ async def test_http_auth_decision_and_rbac(database):
             ),
         )
         assert response.status_code == 201, response.text
+        await client.post("/api/auth/signout")
+        response = await client.post(
+            "/api/auth/signin",
+            json={"login": "tester@example.com", "password": "test-password-123"},
+        )
+        assert response.status_code == 200, response.text
         p = proposal()
         await submit(p)
         response = await client.post(
@@ -376,3 +382,28 @@ async def test_tls_store_input_records_and_queues_atomically(database, monkeypat
         )
         == 120
     )
+
+
+async def test_onboarding_upgrade_preserves_existing_store(database):
+    from pathlib import Path
+
+    schema = "upgrade_" + uuid4().hex
+    async with database.pool().acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(f"CREATE SCHEMA {schema}")
+            await conn.execute(f"SET LOCAL search_path TO {schema}")
+            await conn.execute("""CREATE TABLE users(username TEXT PRIMARY KEY);
+                CREATE TABLE products(product_id TEXT PRIMARY KEY,category TEXT);
+                CREATE TABLE store_settings(id BOOLEAN PRIMARY KEY,
+                    store_name TEXT NOT NULL DEFAULT 'SJSU Market');
+                INSERT INTO products VALUES('SKU-001','Grocery');
+                INSERT INTO store_settings VALUES(TRUE,'Existing store');""")
+            await conn.execute(
+                Path("infra/postgres/migrations/003-dev-onboarding.sql").read_text()
+            )
+            row = await conn.fetchrow("SELECT * FROM store_settings")
+            assert row["store_name"] == "Existing store"
+            assert row["onboarded_at"] is not None
+            assert await conn.fetchval("SELECT category FROM products") == "Grocery"
+            assert await conn.fetchval("SELECT name FROM store_categories") == "Grocery"
+            await conn.execute(f"DROP SCHEMA {schema} CASCADE")

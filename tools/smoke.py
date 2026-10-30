@@ -47,7 +47,7 @@ async def main(args):
     try:
         async with httpx.AsyncClient(base_url=args.api, timeout=15) as api:
             response = await api.post(
-                "/api/auth/signin", json={"email": email, "password": password}
+                "/api/auth/signin", json={"login": email, "password": password}
             )
             response.raise_for_status()
             row = await conn.fetchrow("""SELECT p.product_id,h.price,l.label_id FROM products p

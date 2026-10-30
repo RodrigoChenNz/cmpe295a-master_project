@@ -64,7 +64,7 @@ async def test_full_mqtt_loop_to_confirmed_emulated_shelf(
             validate("state", p)
             for i in range(100):
                 if i % 10 == 0:
-                    await client.publish("retail/state/SKU-001", dumps(p), qos=1)
+                    await client.publish("retail/state/SKU-001", dumps(p), qos=1, retain=True)
                 row = await database.fetchrow(
                     "SELECT * FROM shelf_labels WHERE label_id='SHLF-001'"
                 )

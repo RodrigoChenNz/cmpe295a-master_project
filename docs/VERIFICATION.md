@@ -4,7 +4,7 @@ Branch: `codex/software-integration`. Original `main` remains `fefdb66d39b2be6ab
 
 ## Executed checks
 
-- 36 automated tests passed against isolated PostgreSQL and real MQTT brokers, including TLS client authentication and publisher ACL enforcement.
+- 37 automated tests passed against isolated PostgreSQL and real MQTT brokers, including TLS client authentication and publisher ACL enforcement.
 - Rule, DQN and DDPG each completed observation → forecast → recommendation/explanation → approval → publication → correlated emulator acknowledgement.
 - Dashboard TypeScript check and production build passed; npm production audit reported zero vulnerabilities.
 - Editable Python package installation, all eight contract schemas, critical Python lint, and whitespace checks passed.
@@ -41,3 +41,5 @@ No superiority claim is made from one synthetic dataset. The learned policies ca
 Physical firmware, real-store/POS data mapping, real customer churn labels and calibration, production HTTPS/operations, and team approval of shared contract additions remain outside the verified software prototype. The API-only state-publication permission was authorized and applied; the pricing certificate remains unable to publish state or approved prices.
 
 Generated checkpoints, episode monitor CSVs, raw evaluation exports and screenshots are local under gitignored `artifacts/`; certificates and account credentials are also excluded from Git. Reproduce with the commands in [SOFTWARE.md](SOFTWARE.md).
+
+Latest dev integration (2026-10-30): onboarding migration preserves existing store data; dashboard typecheck/build and TLS smoke were rerun. See [PR review](PR_REVIEW_2026-10-30.md).
