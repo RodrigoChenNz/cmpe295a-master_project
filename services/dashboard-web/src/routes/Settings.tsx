@@ -344,7 +344,7 @@ export function Settings() {
         <div className={s.grid2}>
           <Field
             label="Call a label offline after"
-            hint="Seconds without a sighting. A device that has gone quiet is shown as offline, which means only that — it may still be displaying the right price."
+            hint="Seconds without a sighting. E-ink labels check in every 30 minutes, so keep this above 3,600; the default, 4,500 (75 minutes), forgives one missed check-in. A label shown as offline may still be displaying the right price."
             dirty={form.dirtyKeys.has('label_stale_secs')}
           >
             <span className={s.suffixBox}>

@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from . import bus, db, gate
+from . import bus, db, gate, labels_in
 
 log = logging.getLogger("shelfiq.ingest")
 
@@ -28,6 +28,15 @@ def _when(value: Any) -> datetime:
 
 
 async def handle(topic: str, raw: bytes) -> None:
+    # A retained label config, replayed when this service connects (and echoed
+    # when it publishes one). Before JSON parsing: an empty one is a deletion.
+    if topic.startswith("retail/label/") and topic.endswith("/config"):
+        try:
+            await labels_in.config_seen(topic.split("/")[2], raw)
+        except Exception:  # noqa: BLE001
+            log.exception("failed to check %s", topic)
+        return
+
     try:
         payload = json.loads(raw)
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
@@ -36,6 +45,21 @@ async def handle(topic: str, raw: bytes) -> None:
 
     if not isinstance(payload, dict):
         log.warning("dropping non-object payload on %s", topic)
+        return
+
+    # The label topics are keyed by label or device, not by product.
+    try:
+        if topic.startswith("retail/shelf/"):
+            await labels_in.shelf_report(topic.rsplit("/", 1)[-1], payload)
+            return
+        if topic == "retail/label/discovered":
+            await labels_in.discovered(payload)
+            return
+    except (KeyError, ValueError, TypeError, InvalidOperation) as exc:
+        log.warning("dropping malformed payload on %s: %s", topic, exc)
+        return
+    except Exception:  # noqa: BLE001
+        log.exception("failed to ingest %s", topic)
         return
 
     product_id = payload.get("product_id")
@@ -297,7 +321,7 @@ async def mark_stale_labels() -> int:
               AND (last_seen_at IS NULL
                    OR last_seen_at < now() - make_interval(secs => $1))
         RETURNING label_id""",
-        float(window or 900),
+        float(window or 4500),
     )
     if rows:
         bus.emit("labels", changed=[r["label_id"] for r in rows])
