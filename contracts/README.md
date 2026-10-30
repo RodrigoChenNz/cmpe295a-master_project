@@ -1,3 +1,5 @@
+> Software branch additions: `state`, `shelf`, and `decision` schemas; optional model/explanation metadata and ordered price publication identifiers. Validate using `make validate`. These changes require normal group review before merging. The device emulator implements the shelf contract; physical firmware must implement the same acknowledgement before hardware confirmation can be claimed.
+
 # Contracts
 
 The five layers of this system never call each other's functions. They exchange JSON over MQTT.

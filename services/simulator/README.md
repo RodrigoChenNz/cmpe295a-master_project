@@ -1,11 +1,9 @@
-# simulator — shared
+# Simulator
 
-**Owner:** Parth Gala · **Status:** not started
+Owner: Parth Gala. Implemented in `retail/simulation.py` and `retail/workers.py`.
 
-A fake store: demand curves, sales events, competitor price movement, inventory drawdown.
+`python -m retail worker simulator` publishes seeded synthetic store observations. `RetailPricingEnv` implements the Gymnasium contract for discrete DQN and continuous DDPG actions, demand response, stock, competitor movement, and profit/volatility/churn-proxy reward.
 
-Not throwaway — this becomes the `gymnasium` environment the RL agent trains in. It is also
-what makes results reproducible: the evaluation chapter needs deterministic seeded runs, which
-a live scraped feed can never give you.
+Evaluation uses common exogenous draws and held-out seeds. All generated observations identify `source=simulator`.
 
-Replaces the SerpAPI scraping from the 295A prototype for all development and evaluation.
+See [software guide](../../docs/SOFTWARE.md).

@@ -103,6 +103,24 @@ _FROM = """
 """
 
 
+class RegisterLabel(BaseModel):
+    label_id: str = Field(pattern=r"^SHLF-[0-9]{3,}$")
+    kind: Literal['lcd','eink'] = 'lcd'
+
+
+@router.post('',status_code=201)
+async def register_label(body:RegisterLabel,user:Annotated[auth.CurrentUser,Depends(auth.require_editor)]):
+    if await db.fetchval('SELECT 1 FROM shelf_labels WHERE label_id=$1',body.label_id):
+        raise HTTPException(409,'This label is already registered.')
+    try:
+        await db.execute('INSERT INTO shelf_labels(label_id,kind) VALUES($1,$2)',body.label_id,body.kind)
+    except Exception as exc:
+        if db.unique_constraint(exc):raise HTTPException(409,'This label is already registered.') from exc
+        raise
+    bus.emit('labels',changed=[body.label_id])
+    return {'label_id':body.label_id,'kind':body.kind,'status':'unassigned'}
+
+
 @router.get("")
 async def list_labels(
     user: Annotated[auth.CurrentUser, Depends(auth.current_user)],
@@ -203,7 +221,7 @@ async def get_label(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such label.")
 
     pushes = await db.fetch(
-        """SELECT id, price, line1, line2, result, published_at, settled_at,
+        """SELECT id, price, line1, line2, result, published_at, settled_at, sent_at, publication_id,
                   decision_id
              FROM label_pushes WHERE label_id = $1
             ORDER BY published_at DESC LIMIT 25""",

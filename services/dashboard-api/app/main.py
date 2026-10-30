@@ -16,13 +16,13 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from . import auth, bus, db, ingest
+from . import auth, bus, db, ingest, migrations, outbox
 from .config import settings
 from .routers import (
     activity, categories, dashboard, labels, locations, meta, products, rules, stream, users,
 )
 from .routers import auth as auth_router
-from .routers import suggestions
+from .routers import suggestions, system
 
 logging.basicConfig(
     level=logging.INFO,
@@ -102,6 +102,7 @@ async def _ensure_singletons() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.connect()
+    await migrations.apply()
     await _check_schema()
     await _ensure_singletons()
     await auth.bootstrap_user()
@@ -109,6 +110,7 @@ async def lifespan(app: FastAPI):
     stop = asyncio.Event()
     tasks = [
         asyncio.create_task(bus.run(stop), name="mqtt"),
+        asyncio.create_task(outbox.run(stop), name="outbox"),
         asyncio.create_task(_housekeeping(stop), name="housekeeping"),
     ]
     log.info("dashboard-api ready")
@@ -151,6 +153,7 @@ for r in (
     meta.router,
     dashboard.router,
     suggestions.router,
+    system.router,
     products.router,
     labels.router,
     locations.router,
@@ -187,9 +190,10 @@ async def health() -> dict:
         database = False
 
     broker = bus.broker_state()
+    durable_queued = await db.fetchval("SELECT count(*) FROM message_outbox WHERE sent_at IS NULL") if database else None
     return {
         "status": "ok" if database else "degraded",
         "database": database,
-        "broker": broker | {"queued": bus.queued_count()},
+        "broker": broker | {"queued": durable_queued},
         "shelf_writes": "live" if broker.get("connected") else "queued",
     }

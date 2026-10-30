@@ -23,6 +23,7 @@ import { SignIn } from './routes/SignIn';
 import { Setup } from './routes/Setup';
 import { Onboarding, SetupPending } from './routes/Onboarding';
 import { Join } from './routes/Join';
+import { System } from './routes/System';
 import { Dashboard } from './routes/Dashboard';
 import { Suggestions } from './routes/Suggestions';
 import { SuggestionDetail } from './routes/SuggestionDetail';
@@ -162,6 +163,7 @@ export function App() {
       <AppShell user={session.user} onSignedOut={signedOut}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/system" element={<System />} />
 
           <Route path="/suggestions" element={<Suggestions />} />
           <Route path="/suggestions/:decisionId" element={<SuggestionDetail />} />

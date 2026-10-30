@@ -209,6 +209,14 @@ export const api = {
       `/api/labels${qs(p)}`,
     ),
 
+  registerLabel: (body: { label_id: string; kind: 'lcd' | 'eink' }) => post<{label_id: string}>('/api/labels', body),
+  systemStatus: () => request<{
+    counts: {queued: number; delivered: number; observations: number; confirmed_labels: number; emulated_labels: number; last_observation: string | null};
+    broker: {connected: boolean};
+    pricing_models: {agent_version: string; proposals: number}[];
+    forecast_models: {model_version: string; observations: number}[];
+  }>('/api/system'),
+
   labelDetail: (id: string) => request<LabelDetail>(`/api/labels/${id}`),
 
   /** Omit `slot_code` to leave the position alone; send null to clear it. */

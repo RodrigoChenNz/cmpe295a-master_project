@@ -2,10 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sjsu.edu/cmpe295/contracts/proposal.schema.json",
   "title": "PriceProposal",
-  "description": "Published by the pricing agent to retail/proposal/{product_id}. QoS 1, NOT retained — a stale proposal reasoning about last week's market is worse than no proposal. This is a RECOMMENDATION, not a decision: the agent never publishes to retail/price. The dashboard evaluates each proposal against the product's policy and either auto-applies it or queues it for a human. Nothing reaches the shelf without passing through that gate.",
+  "description": "Published by the pricing agent to retail/proposal/{product_id}. QoS 1, NOT retained \u2014 a stale proposal reasoning about last week's market is worse than no proposal. This is a RECOMMENDATION, not a decision: the agent never publishes to retail/price. The dashboard evaluates each proposal against the product's policy and either auto-applies it or queues it for a human. Nothing reaches the shelf without passing through that gate.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["product_id", "proposed_price", "current_price", "currency", "decision_id", "reason_tag", "agent_version", "expires_at", "ts"],
+  "required": [
+    "product_id",
+    "proposed_price",
+    "current_price",
+    "currency",
+    "decision_id",
+    "reason_tag",
+    "agent_version",
+    "expires_at",
+    "ts"
+  ],
   "properties": {
     "product_id": {
       "type": "string",
@@ -25,7 +35,9 @@
     },
     "currency": {
       "type": "string",
-      "enum": ["USD"]
+      "enum": [
+        "USD"
+      ]
     },
     "decision_id": {
       "type": "string",
@@ -40,7 +52,7 @@
     },
     "agent_version": {
       "type": "string",
-      "description": "Which policy produced the recommendation, e.g. 'stub-0.1' or 'dqn-2026-10-03'. Required so approval rates can be attributed per agent version — that ratio is an evaluation result."
+      "description": "Which policy produced the recommendation, e.g. 'stub-0.1' or 'dqn-2026-10-03'. Required so approval rates can be attributed per agent version \u2014 that ratio is an evaluation result."
     },
     "expires_at": {
       "type": "string",
@@ -50,6 +62,15 @@
     "ts": {
       "type": "string",
       "format": "date-time"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "rationale": {
+      "type": "string",
+      "maxLength": 1000
     }
   },
   "examples": [

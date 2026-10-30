@@ -1,27 +1,9 @@
-# pricing-agent — Layer 4
+# Pricing agent
 
-**Owner:** Parth Gala · **Status:** not started
+Owner: Parth Gala. Implemented in `retail/pricing.py`, `retail/workers.py`, and `retail/explain.py`.
 
-Recommends prices and explains them. **It does not set prices.**
+Run `python -m retail worker pricing`. Default `PRICING_POLICY=rule`; DQN/DDPG require an explicit `PRICING_MODEL` checkpoint. Train and evaluate with `make train`.
 
-Publishes [`PriceProposal`](../../contracts/proposal.schema.json) to
-`retail/proposal/{id}` — never to `retail/price/{id}`. `dashboard-api` evaluates each
-proposal against the manager's standing policy and either applies it or queues it for a
-human. Nothing reaches a shelf without passing that gate.
+Publishes recommendations and exact single-reference Shapley contributions in USD for the actual bounded price function. Listens to state, inventory, guardrails, approved prices and decision outcomes. The API owns approval and price publication.
 
-Ships in two stages, behind the same contract:
-1. **Stub** — rule-based if/else. Exists so every other layer is unblocked in week 1.
-2. **Real** — DDPG/DQN over the `simulator` gym environment, reward
-   `Profit − λ·Volatility − γ·ChurnRisk`, plus a SHAP TreeExplainer emitting
-   `retail/explain/{id}`.
-
-Three things the approval gate asks of you:
-
-- Clamp proposals to the band from `retail/guardrail/{id}`. A proposal outside it will be
-  queued rather than applied, which wastes a manager's attention.
-- Set `expires_at` honestly — how long does your reasoning actually hold?
-- **Subscribe to `retail/price/{id}`.** That is how you learn whether your recommendation
-  was taken, overridden or rejected. Approval rate per `agent_version` is a feedback signal
-  and an evaluation result worth reporting in the paper.
-
-PyTorch · Stable-Baselines3 · gymnasium · SHAP.
+See [software guide](../../docs/SOFTWARE.md). This is synthetic-data validation; no production effectiveness claim is made.

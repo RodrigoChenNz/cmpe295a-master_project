@@ -14,6 +14,14 @@ is what makes the explanation load-bearing rather than decorative: the manager r
 
 **Team:** Het Bhalala · Rodrigo Chen · Parth Gala · Aruna Samhitha Mutyala
 
+## Complete software implementation
+
+Run `make software` for the simulator → forecast → pricing and exact Shapley explanation → approval → durable MQTT delivery → confirmed display emulator loop. Setup, training, evaluation, TLS, recovery, and limitations are documented in [the software guide](docs/SOFTWARE.md).
+
+The implementation lives in `retail/`; the existing dashboard and API integrate it through shared schemas. DQN and DDPG train against a seeded Gymnasium environment. Forecast experiments compare mean, seasonal, Prophet and LSTM on chronological held-out data. The default live policy and forecast are explicitly rule-based and seasonal; trained checkpoints can be selected through configuration.
+
+Software tests use a separate PostgreSQL database and real Mosquitto broker. Physical firmware and real-store validation remain separate work. Synthetic churn risk is a proxy, not a model fitted to customer records.
+
 ## Architecture
 
 ```
@@ -87,9 +95,9 @@ infra/           docker-compose, mosquitto config, postgres schema
 services/
   dashboard-api/ ✔ FastAPI · the decision gate · MQTT↔WS         Rodrigo
   dashboard-web/ ✔ React 19 · Vite · TypeScript · the console    Rodrigo
-  pricing-agent/   stub rules → DDPG/DQN + SHAP                  Parth
-  forecaster/      stub → Prophet/LSTM + churn risk              Aruna
-  simulator/       fake store; becomes the gym environment       Parth
+  pricing-agent/   DQN / DDPG + exact price Shapley                  Parth
+  forecaster/      seasonal runtime; Prophet/LSTM evaluation              Aruna
+  simulator/       seeded store + Gymnasium environment       Parth
 edge/
   msp432/          firmware · 16x2 LCD driver                    Het
   gateway/         MQTT ↔ serial link (design not settled)       Het
@@ -101,33 +109,11 @@ docs/            workbook, meeting notes, agent prompts
 design_handoff_shelfiq/  ★ the console's visual source of truth
 ```
 
-Layer 5 is built: the review queue, the catalogue, product detail, the activity
-log and the decision gate behind them all. Five screens are stubbed with their
-API half already working — see
-[`services/dashboard-web/README.md`](services/dashboard-web/README.md).
+The console includes review and explanation detail, catalogue, activity, labels and pairing, pricing rules, settings, users, locations, and software status. Approved prices and their durable delivery records commit together. A label becomes confirmed only after a matching render acknowledgement.
 
 ## How we work
 
-**Walking skeleton first.** The 295A attempt built one layer deep and the layers never
-exchanged a message. This time: the thinnest end-to-end path through all five layers, every
-component a deliberate stub, passing in week 1. Then thicken each layer independently behind
-the frozen contract.
-
-Week 1 target — `make smoke` green:
-
-```
-simulator → stub agent ──proposal──▶ dashboard-api ──▶ inside policy? ──yes──┐
-                                           │                                 │
-                                           no → review queue → manager       │
-                                                      └──── approves ────────┤
-                                                                             ▼
-                                                                    retail/price/SKU-001
-                                                                       ├→ WebSocket → browser
-                                                                       └→ gateway → MSP432 → LCD
-```
-
-No RL, no SHAP, no Prophet, no real hardware. Those swap in afterwards, one at a time, without
-touching anyone else's code.
+Use `make integration` to exercise the full software path with isolated infrastructure, and `make smoke` against a running software stack. Keep contract changes under group review before merging.
 
 **Branches and PRs:**
 - Work branches are named `<type>/<initials>/<short-name>`, e.g. `feature/rc/layout-levels`.
@@ -152,8 +138,8 @@ let them lapse.
 | **Does approval gating weaken the "agentic" claim in Ch.2?** | all four + advisor | It strengthens the XAI contribution and matches the cited 54%→89% acceptance figure, but it is Chapter 2 surgery. Raise it before building. |
 | MSP432P401R or MSP430? "MSP32" is not a TI part number | Het | Determines the LCD node's toolchain |
 | **Two label families now, not one** — 16x2 LCD and a Heltec Vision Master E213 (ESP32) e-ink | Het | Two toolchains and two Wi-Fi stories. The ESP32 has on-die Wi-Fi; neither MSP part does. The console already models both (`shelf_labels.kind`). |
-| **Add `confidence` and `rationale` to `proposal`?** | all four | The console shows both and the contract carries neither, so they are optional extras today and read as "Not reported". Backward-compatible to add. |
-| **Add a `retail/shelf/{label_id}` acknowledgement?** | all four + Het | Without it "confirmed" only means "published and no complaint", and label liveness is inferred from silence. It buys a real third state and a better demo. |
+| Review optional proposal fields | all four | Software branch adds schema support for confidence and rationale. |
+| Review correlated shelf acknowledgement | all four + Het | Software branch implements and tests the contract with an explicit emulator; physical firmware must implement it. |
 | How MQTT reaches the board — CC3120, ESP8266 modem, or Pi bridge | Het | Neither MSP part has on-die Wi-Fi; see [`edge/gateway/`](edge/gateway/) |
 | Hardware order placed? | Het | Lead time; simulation only carries so far |
 

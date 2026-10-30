@@ -1,0 +1,6 @@
+aiomqtt==2.5.1
+asyncpg==0.32.0
+jsonschema==4.26.0
+numpy==2.5.4
+gymnasium==1.4.0
+stable-baselines3==2.9.2
