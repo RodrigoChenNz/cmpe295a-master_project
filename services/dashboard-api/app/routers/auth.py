@@ -15,16 +15,22 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class SignInBody(BaseModel):
-    email: EmailStr
+    # An email or a username. A username can never contain "@" (users table
+    # CHECK), so which one was meant is never ambiguous.
+    login: str = Field(min_length=1, max_length=320)
     password: str = Field(min_length=1, max_length=256)
+    # Stay signed in across browser restarts, for session_remember_days.
+    remember: bool = False
 
 
 @router.post("/signin")
 async def signin(body: SignInBody, request: Request, response: Response) -> dict:
+    login = body.login.strip()
+    column = "lower(email)" if "@" in login else "username"
     user = await db.fetchrow(
-        """SELECT username, full_name, role, email, password_hash, is_active
-             FROM users WHERE lower(email) = lower($1)""",
-        body.email,
+        f"""SELECT username, full_name, role, email, password_hash, is_active
+              FROM users WHERE {column} = lower($1)""",
+        login,
     )
 
     # One failure message and one timing profile for every cause: no account,
@@ -38,10 +44,10 @@ async def signin(body: SignInBody, request: Request, response: Response) -> dict
     if not ok:
         await asyncio.sleep(0.4)
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "That email and password do not match."
+            status.HTTP_401_UNAUTHORIZED, "Those sign-in details do not match."
         )
 
-    return await auth.start_session(request, response, user)
+    return await auth.start_session(request, response, user, remember=body.remember)
 
 
 @router.post("/signout")
@@ -62,11 +68,34 @@ async def me(
     # 200 with user: null rather than 401, so the app can decide between the
     # sign-in screen and the console without treating a normal cold start as
     # an error in the console. setup_required picks the first-run screen
-    # instead of sign-in on a store with no accounts at all.
+    # instead of sign-in on a store with no accounts at all, and
+    # onboarding_required the setup wizard instead of the console on a store
+    # nobody has configured yet.
+    #
+    # The store's name and number go out signed in or not: the sign-in screen
+    # shows them, and they are on the sign above the door anyway.
+    store = await db.fetchrow(
+        "SELECT store_name, store_code, onboarded_at FROM store_settings LIMIT 1"
+    )
+    brand = (
+        {"name": store["store_name"], "code": store["store_code"]}
+        if store and store["store_name"]
+        else None
+    )
     if user:
-        return {"user": user.as_dict(), "setup_required": False}
+        return {
+            "user": user.as_dict(),
+            "setup_required": False,
+            "onboarding_required": not (store and store["onboarded_at"]),
+            "store": brand,
+        }
     has_users = await db.fetchval("SELECT EXISTS (SELECT 1 FROM users)")
-    return {"user": None, "setup_required": not has_users}
+    return {
+        "user": None,
+        "setup_required": not has_users,
+        "onboarding_required": False,
+        "store": brand,
+    }
 
 
 # Shared by setup and invite acceptance. Sign-in deliberately has no length

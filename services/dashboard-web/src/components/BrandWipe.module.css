@@ -1,0 +1,22 @@
+/* Grows from the logo mark until it covers the screen. Named for the view
+ * transition (--vt-name, the target's name), which then shrinks it into that
+ * mark in the console's nav; base.css sets the morph's timing. */
+.cover {
+  position: fixed;
+  z-index: 100;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--size);
+  border-radius: var(--r);
+  background: var(--ac);
+  view-transition-name: var(--vt-name);
+  animation: coverGrow var(--wipe-ms) var(--ease) both;
+}
+
+@keyframes coverGrow {
+  to {
+    transform: scale(var(--scale));
+    border-radius: 0;
+  }
+}

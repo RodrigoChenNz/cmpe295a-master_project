@@ -1,0 +1,71 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 4px 0 12px;
+  border: 1px solid var(--border-card);
+  border-radius: 15px;
+  background: var(--subtle);
+  font-size: var(--fs-body);
+  color: var(--ink-strong);
+}
+.chip:not(:has(.remove)) {
+  padding-right: 12px;
+}
+
+.count {
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+}
+
+.remove {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.remove:hover {
+  background: var(--red-surface);
+  color: var(--red);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--ink-muted);
+}
+
+.addRow {
+  display: flex;
+  gap: 8px;
+}
+.addRow input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+}
+
+.problem {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--red-deep);
+}

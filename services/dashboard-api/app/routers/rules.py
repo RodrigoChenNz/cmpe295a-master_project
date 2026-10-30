@@ -39,14 +39,20 @@ async def get_rules(
              ) counts ON TRUE
             ORDER BY cr.category"""
     )
-    # Categories that exist in the catalogue but have no rule yet: better to
-    # show them as unconfigured than to leave a product silently ungoverned.
+    # Categories that exist in the catalogue or on the store's own list but
+    # have no rule yet: better to show them as unconfigured than to leave a
+    # product silently ungoverned. The store's list matters on a new store,
+    # where onboarding has named categories before any product uses them.
     unruled = await db.fetch(
-        """SELECT category, count(*) AS product_count
-             FROM products
-            WHERE archived_at IS NULL AND category IS NOT NULL
-              AND category NOT IN (SELECT category FROM category_rules)
-            GROUP BY category ORDER BY category"""
+        """SELECT c.category, count(p.product_id) AS product_count
+             FROM (SELECT category FROM products
+                    WHERE archived_at IS NULL AND category IS NOT NULL
+                   UNION
+                   SELECT name FROM store_categories) c
+             LEFT JOIN products p
+                    ON p.category = c.category AND p.archived_at IS NULL
+            WHERE c.category NOT IN (SELECT category FROM category_rules)
+            GROUP BY c.category ORDER BY c.category"""
     )
     return {
         "limits": serialize.row(limits) if limits else None,
@@ -224,17 +230,20 @@ async def put_category_rule(
                 user.username,
             )
 
-            agent_clause = (
-                ", agent_excluded = NOT $4::boolean" if body.apply_agent_flag else ""
-            )
+            # The flag is a parameter rather than a clause spliced in only when
+            # it is set: left out, $4 appears nowhere in the statement and
+            # Postgres refuses it as a parameter of unknown type.
             affected = await conn.fetch(
-                f"""UPDATE products p
+                """UPDATE products p
                        SET min_price = round(p.unit_cost / (1 - $2::numeric / 100), 2),
                            max_price = CASE
                                WHEN $3::numeric IS NULL THEN p.max_price
                                ELSE round(coalesce(h.price, p.max_price, p.unit_cost)
                                           * (1 + $3::numeric / 100), 2)
-                           END{agent_clause},
+                           END,
+                           agent_excluded = CASE WHEN $6::boolean
+                                                 THEN NOT $4::boolean
+                                                 ELSE p.agent_excluded END,
                            policy_set_by = $5,
                            policy_set_at = now(),
                            updated_at = now()
@@ -250,6 +259,7 @@ async def put_category_rule(
                 body.ceiling_pct,
                 body.agent_may_suggest,
                 user.username,
+                body.apply_agent_flag,
             )
 
     published, queued = 0, 0

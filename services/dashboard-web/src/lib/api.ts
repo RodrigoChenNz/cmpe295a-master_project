@@ -9,7 +9,7 @@ import type {
   ActivityRow, ApproveResult, InviteInfo, InviteIssued, LocationLevel, BlinkResult, CategoryRule, DashboardData, Facets,
   Label, LabelDetail, LocationImpact, LocationTree, Meta, MqttTestResult,
   NewProductBody, Page, Product, ProductDetail, StockHealth, PriceReview,
-  RulesPreview, RulesResponse, SavedView, SettingsResponse, Store, Suggestion,
+  RulesPreview, RulesResponse, SavedView, SettingsResponse, Store, StoreBrand, StoreCategory, Suggestion,
   SuggestionDetail, User, UserRow,
 } from './types';
 
@@ -99,10 +99,19 @@ export const api = {
   base: BASE,
 
   /* ── Session ───────────────────────────────────────────────────────── */
-  signIn: (email: string, password: string) =>
-    post<{ user: User; expires_at: string }>('/api/auth/signin', { email, password }),
+  /** `login` is an email or a username; the service tells them apart.
+   *  `remember` keeps the session across browser restarts (30 days). */
+  signIn: (login: string, password: string, remember = false) =>
+    post<{ user: User; expires_at: string }>('/api/auth/signin', { login, password, remember }),
   signOut: () => post<{ signed_out: boolean }>('/api/auth/signout'),
-  me: () => request<{ user: User | null; setup_required: boolean }>('/api/auth/me'),
+  me: () =>
+    request<{
+      user: User | null;
+      setup_required: boolean;
+      /** Signed in, but the store setup wizard has not been finished. */
+      onboarding_required: boolean;
+      store: StoreBrand | null;
+    }>('/api/auth/me'),
   /** First-run only: creates the store's first account, as super admin. */
   setup: (body: { username: string; email: string; full_name: string; password: string }) =>
     post<{ user: User; expires_at: string }>('/api/auth/setup', body),
@@ -309,9 +318,20 @@ export const api = {
     `/api/rules/categories/${encodeURIComponent(category)}`, body,
   ),
 
+  /* ── Categories ────────────────────────────────────────────────────── */
+  categories: () => request<{ categories: StoreCategory[] }>('/api/categories'),
+  /** Replaces the whole list, in this order. Products keep their category. */
+  saveCategories: (names: string[]) =>
+    put<{ categories: StoreCategory[] }>('/api/categories', { names }),
+
   /* ── Settings ──────────────────────────────────────────────────────── */
   settings: () => request<SettingsResponse>('/api/settings/store'),
   saveSettings: (body: Partial<Store>) => put<{ store: Store }>('/api/settings/store', body),
+  /** Super admin only: where the MQTT broker is. */
+  saveNetwork: (body: { mqtt_host: string; mqtt_port: number; mqtt_tls: boolean }) =>
+    put<{ store: Store }>('/api/settings/network', body),
   testMqtt: (body: { host?: string; port?: number; tls?: boolean }) =>
     post<MqttTestResult>('/api/settings/mqtt/test', body),
+  /** Super admin only. Refused until the store is named and its levels exist. */
+  completeOnboarding: () => post<{ store: Store }>('/api/onboarding/complete'),
 };

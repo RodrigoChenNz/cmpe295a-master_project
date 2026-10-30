@@ -26,6 +26,14 @@
   color: var(--ink-2);
   max-width: 82ch;
 }
+.cardSub a {
+  color: var(--ac);
+}
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
 
 .stale {
   margin: 0;

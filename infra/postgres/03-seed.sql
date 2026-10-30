@@ -18,10 +18,12 @@
 BEGIN;
 
 -- ── Store settings ──────────────────────────────────────────────────────────
-INSERT INTO store_settings (id, store_name, store_code, timezone, currency,
-                            mqtt_host, mqtt_port, mqtt_tls, label_stale_secs)
-VALUES (TRUE, 'SJSU Market', 'STORE-04', 'America/Los_Angeles', 'USD',
-        'mosquitto', 1883, FALSE, 900);
+-- Onboarded already, so the demo opens on the Dashboard, not the setup wizard.
+INSERT INTO store_settings (id, store_name, store_code, store_type, timezone, currency,
+                            mqtt_host, mqtt_port, mqtt_tls, label_stale_secs,
+                            onboarded_at)
+VALUES (TRUE, 'SJSU Market', 'STORE-04', 'grocery', 'America/Los_Angeles', 'USD',
+        'mosquitto', 1883, FALSE, 900, now());
 
 -- ── People ──────────────────────────────────────────────────────────────────
 -- password_hash '!' is an unusable sentinel: no password can ever verify
@@ -135,6 +137,10 @@ INSERT INTO products (product_id, name, display_name, sku, upc, brand, supplier,
   ('SKU-024', 'Quilted Winter Coat', 'COAT QUILTED', 'CL-1168', '5010024030414', 'Halden', 'Halden Outerwear', 'Clothing', 88.00, 5, 'clothing', 125.71, 190.80, NULL, 'rchen', now() - interval '1814400 seconds', FALSE),
   ('SKU-025', 'Canvas Trainers', 'TRAINERS CNVS', 'CL-1175', '5010024030513', 'Fairstep', 'Fairstep Footwear', 'Clothing', 26.50, 36, 'clothing', 37.86, 65.99, NULL, 'rchen', now() - interval '1814400 seconds', FALSE),
   ('SKU-026', 'Linen Summer Dress', 'DRESS LINEN', 'CL-1182', '5010024030612', 'Brackenfield', 'Brackenfield Apparel', 'Clothing', 33.00, 8, 'clothing', 47.14, 81.60, NULL, 'rchen', now() - interval '1814400 seconds', FALSE);
+
+INSERT INTO store_categories (name, sort_order)
+SELECT category, row_number() OVER (ORDER BY category)
+  FROM (SELECT DISTINCT category FROM products WHERE category IS NOT NULL) c;
 
 -- Field-pack values. Expiry is the one the agent actually reads.
 INSERT INTO product_fields (product_id, pack, values) VALUES

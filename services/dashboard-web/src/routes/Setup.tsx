@@ -114,7 +114,7 @@ export function Setup({
               required
               onChange={set('email')}
             />
-            <span className={s.hint}>You sign in with this.</span>
+            <span className={s.hint}>You sign in with this or your username.</span>
           </div>
 
           <div className={s.field}>

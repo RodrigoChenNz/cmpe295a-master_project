@@ -112,9 +112,16 @@ async def bootstrap_user() -> None:
     )
 
 
-async def create_session(username: str, user_agent: str | None) -> tuple[str, datetime]:
+async def create_session(
+    username: str, user_agent: str | None, remember: bool = False
+) -> tuple[str, datetime]:
     session_id = uuid.uuid4()
-    expires = datetime.now(timezone.utc) + timedelta(hours=settings.session_ttl_hours)
+    ttl = (
+        timedelta(days=settings.session_remember_days)
+        if remember
+        else timedelta(hours=settings.session_ttl_hours)
+    )
+    expires = datetime.now(timezone.utc) + ttl
     await db.execute(
         """INSERT INTO sessions (session_id, username, expires_at, user_agent)
            VALUES ($1, $2, $3, $4)""",
@@ -141,14 +148,19 @@ async def purge_expired_sessions() -> None:
     await db.execute("DELETE FROM sessions WHERE expires_at < now()")
 
 
-def set_session_cookie(response: Response, session_id: str, expires: datetime) -> None:
+def set_session_cookie(
+    response: Response, session_id: str, expires: datetime, persistent: bool
+) -> None:
+    """`persistent` (remember me) gives the cookie an expiry, so it outlives the
+    browser; otherwise it is a browser-session cookie, gone when the browser
+    closes. The server-side expiry applies either way."""
     response.set_cookie(
         settings.session_cookie_name,
         session_id,
         httponly=True,
         secure=settings.session_cookie_secure,
         samesite="lax",
-        expires=expires,
+        expires=expires if persistent else None,
         path="/",
     )
 
@@ -157,13 +169,15 @@ def clear_session_cookie(response: Response) -> None:
     response.delete_cookie(settings.session_cookie_name, path="/")
 
 
-async def start_session(request: Request, response: Response, user: dict) -> dict:
+async def start_session(
+    request: Request, response: Response, user: dict, remember: bool = False
+) -> dict:
     """Sign `user` (a users row) in: session row, cookie, and the response body
     every sign-in path returns."""
     session_id, expires = await create_session(
-        user["username"], request.headers.get("user-agent")
+        user["username"], request.headers.get("user-agent"), remember
     )
-    set_session_cookie(response, session_id, expires)
+    set_session_cookie(response, session_id, expires, persistent=remember)
     return {
         "user": CurrentUser(
             user["username"], user["full_name"], user["role"], user["email"]

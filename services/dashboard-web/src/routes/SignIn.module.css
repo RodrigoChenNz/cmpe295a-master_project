@@ -135,3 +135,131 @@
   color: var(--ac);
   font-size: var(--fs-xs);
 }
+
+/* ── After sign-in ──────────────────────────────────────────────────────── */
+
+.welcome {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  animation: welcomeIn 320ms var(--ease) both;
+}
+@keyframes welcomeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.welcomeLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.welcomeName {
+  font-size: var(--fs-panel);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome {
+    animation: none;
+  }
+}
+
+/* ── Sign-in form: folding into the "Verifying" bar ─────────────────────── */
+
+/* Spacing comes from the rows themselves (below), not the card's gap, so a
+ * folded row takes no room at all. */
+.signInCard {
+  gap: 0;
+  justify-content: center;
+}
+
+.fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 360ms var(--ease), opacity 220ms var(--ease);
+}
+.fold[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* overflow: hidden is what lets the row fold; the 3px padding cancelled by
+ * the negative margin keeps focus rings from being clipped by it. */
+.foldInner {
+  min-height: 0;
+  overflow: hidden;
+  padding: 3px;
+  margin: -3px;
+}
+.fold + .fold:not([data-bare]) > .foldInner {
+  padding-top: 21px;
+}
+
+.verifying {
+  position: relative;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-input);
+  border-radius: var(--r);
+  background: var(--surface);
+  overflow: hidden;
+}
+.verifyingText {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+/* An indeterminate sweep along the bar's bottom edge. */
+.verifyingTrack {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 35%;
+  height: 2px;
+  background: var(--ac);
+  animation: verifySweep 1100ms ease-in-out infinite;
+}
+@keyframes verifySweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-body);
+  color: var(--ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fold {
+    transition: none;
+  }
+  .verifyingTrack {
+    animation-duration: 2400ms;
+  }
+}

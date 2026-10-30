@@ -54,3 +54,4 @@ edge/msp432/Release/
 artifacts/
 
 secrets/
+edge/**/config.py

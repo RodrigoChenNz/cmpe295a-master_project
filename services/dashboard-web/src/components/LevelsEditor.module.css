@@ -120,6 +120,18 @@
   gap: 8px;
   margin-top: 4px;
 }
+/* The wizard: fill the card and keep the buttons where every other step has
+ * them, at the bottom. */
+.editor[data-compact] {
+  flex: 1;
+}
+.editor[data-compact] .actions {
+  margin-top: auto;
+  gap: 10px;
+}
+.back {
+  margin-right: auto;
+}
 
 @media (max-width: 560px) {
   .row {

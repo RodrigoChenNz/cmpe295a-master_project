@@ -8,15 +8,20 @@
  *
  * Signed out has three screens: /join?token=… accepts an invite, a store with
  * no accounts at all gets first-run setup, and everything else gets sign-in.
+ *
+ * Signed in, a store nobody has configured yet gets the setup wizard instead of
+ * the console: the super admin fills it in, and anyone else waits for them.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { api } from './lib/api';
-import type { User } from './lib/types';
+import { setPageTitle } from './lib/format';
+import type { Store, StoreBrand, User } from './lib/types';
 import { AppShell } from './components/AppShell';
 import { SignIn } from './routes/SignIn';
 import { Setup } from './routes/Setup';
+import { Onboarding, SetupPending } from './routes/Onboarding';
 import { Join } from './routes/Join';
 import { System } from './routes/System';
 import { Dashboard } from './routes/Dashboard';
@@ -37,7 +42,7 @@ import s from './App.module.css';
 type Session =
   | { state: 'checking' }
   | { state: 'out'; setupRequired: boolean }
-  | { state: 'in'; user: User };
+  | { state: 'in'; user: User; onboarding: boolean };
 
 /** The invite token, if this page was opened from an invite link. */
 function joinToken(): string | null {
@@ -47,35 +52,69 @@ function joinToken(): string | null {
 
 export function App() {
   const [session, setSession] = useState<Session>({ state: 'checking' });
+  const [brand, setBrand] = useState<StoreBrand | null>(null);
+
+  // Asked again after every way in, because only the service knows whether the
+  // store has been through the setup wizard yet.
+  const check = useCallback(async () => {
+    try {
+      const { user, setup_required, onboarding_required, store } = await api.me();
+      setBrand(store);
+      setSession(
+        user
+          ? { state: 'in', user, onboarding: onboarding_required }
+          : { state: 'out', setupRequired: setup_required },
+      );
+    } catch {
+      // The service being unreachable is not the same as being signed out,
+      // but from here the only useful screen is the sign-in form, which says
+      // so when its own request fails.
+      setSession({ state: 'out', setupRequired: false });
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    api
-      .me()
-      .then(({ user, setup_required }) => {
-        if (!cancelled)
-          setSession(user ? { state: 'in', user } : { state: 'out', setupRequired: setup_required });
-      })
-      .catch(() => {
-        // The service being unreachable is not the same as being signed out,
-        // but from here the only useful screen is the sign-in form, which says
-        // so when its own request fails.
-        if (!cancelled) setSession({ state: 'out', setupRequired: false });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void check();
+  }, [check]);
+
+  useEffect(() => setPageTitle(brand?.name), [brand]);
 
   const signedOut = useCallback(() => setSession({ state: 'out', setupRequired: false }), []);
   const [token, setToken] = useState(joinToken);
 
-  // Setup and join both end signed in at the console's front door. Dropping
-  // the /join URL also keeps the token out of the address bar and history.
-  const enter = useCallback((user: User) => {
+  // Setup, join and sign-in all end signed in. Dropping the /join URL also
+  // keeps the token out of the address bar and history.
+  const enter = useCallback(() => {
     if (window.location.pathname === '/join') window.history.replaceState(null, '', '/');
     setToken(null);
-    setSession({ state: 'in', user });
+    void check();
+  }, [check]);
+
+  // Sign-in's hand-off. Asks the service where this user goes (console, setup
+  // wizard, or the waiting screen) and resolves to the function that puts it
+  // on screen, so SignIn can play its exit while the request is in flight and
+  // swap at the moment its animation calls for.
+  const prepareSession = useCallback(async (user: User) => {
+    try {
+      const me = await api.me();
+      return () => {
+        setBrand(me.store);
+        setSession({ state: 'in', user: me.user ?? user, onboarding: me.onboarding_required });
+      };
+    } catch {
+      // Signed in a moment ago, so the session is real; only the follow-up
+      // failed. Let them in rather than bounce them back to the form.
+      return () => setSession({ state: 'in', user, onboarding: false });
+    }
+  }, []);
+
+  // Finishing the setup wizard already knows everything `me` would say, and
+  // the wizard's closing animation needs the console on screen in the same
+  // frame it asks for it (a view transition snapshots the next render), so
+  // this flips state directly instead of asking the service again.
+  const finishSetup = useCallback((store: Store) => {
+    setBrand(store.store_name ? { name: store.store_name, code: store.store_code } : null);
+    setSession((s) => (s.state === 'in' ? { ...s, onboarding: false } : s));
   }, []);
 
   if (session.state === 'checking') {
@@ -108,7 +147,15 @@ export function App() {
         />
       );
     }
-    return <SignIn onSignedIn={(user) => setSession({ state: 'in', user })} />;
+    return <SignIn store={brand} onSignedIn={prepareSession} />;
+  }
+
+  if (session.onboarding) {
+    return session.user.role === 'superadmin' ? (
+      <Onboarding user={session.user} onDone={finishSetup} onSignedOut={signedOut} />
+    ) : (
+      <SetupPending user={session.user} onSignedOut={signedOut} />
+    );
   }
 
   return (

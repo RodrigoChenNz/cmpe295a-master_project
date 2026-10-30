@@ -12,7 +12,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { NAV_ICON } from '../lib/navIcons';
-import { clock, isManagerRole, plural, relative, ROLE_LABEL } from '../lib/format';
+import { clock, isManagerRole, plural, relative, ROLE_LABEL, setPageTitle } from '../lib/format';
 import { useClock, useDismiss, useStream } from '../lib/useStream';
 import type { Meta, StreamEvent, User } from '../lib/types';
 import { Button, Icon } from './ui';
@@ -153,6 +153,13 @@ export function AppShell({
 
   useEffect(reloadMeta, [reloadMeta]);
 
+  // A rename on Settings reloads meta, so the tab follows it without a refresh.
+  const metaLoaded = meta !== null;
+  const storeName = meta?.store?.store_name;
+  useEffect(() => {
+    if (metaLoaded) setPageTitle(storeName);
+  }, [metaLoaded, storeName]);
+
   const streamConnected = useStream(true, (event) => {
     // The broker's state and the nav badge both live in meta, so any event that
     // could change either refreshes it once for the whole shell.
@@ -235,8 +242,12 @@ export function AppShell({
                       nothing from the store name is just a stray hairline. */}
                   {chrome.actions && <span className={s.headerDivider} aria-hidden="true" />}
                   <span className={s.store}>
-                    <span className={s.storeName}>{meta?.store?.store_name ?? 'SJSU Market'}</span>
-                    <span className={s.storeSep}>·</span>
+                    {meta?.store?.store_name && (
+                      <>
+                        <span className={s.storeName}>{meta.store.store_name}</span>
+                        <span className={s.storeSep}>·</span>
+                      </>
+                    )}
                     <span className={s.clock}>{clock(now)}</span>
                   </span>
                   <AlertBell meta={meta} />

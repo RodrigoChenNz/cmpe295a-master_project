@@ -34,15 +34,30 @@ export interface User {
   initials: string;
 }
 
+export type StoreType =
+  | 'grocery' | 'convenience' | 'pharmacy' | 'electronics' | 'hardware' | 'apparel' | 'other';
+
 export interface Store {
-  store_name: string;
+  /** Null until first-run onboarding names the store. */
+  store_name: string | null;
   store_code: string | null;
+  store_type: StoreType | null;
   timezone: string;
+  /** Always "USD": the shared price contract allows nothing else. */
   currency: string;
-  mqtt_host: string;
-  mqtt_port: number;
-  mqtt_tls: boolean;
+  /** The broker fields reach a super admin only. */
+  mqtt_host?: string;
+  mqtt_port?: number;
+  mqtt_tls?: boolean;
   label_stale_secs: number;
+  /** Set when the super admin finished the store setup wizard. */
+  onboarded_at: string | null;
+}
+
+/** What the sign-in screen may show before anyone is signed in. */
+export interface StoreBrand {
+  name: string;
+  code: string | null;
 }
 
 export interface BrokerState {
@@ -79,6 +94,7 @@ export interface Meta {
   /** The store's own level names. Nothing else can be set up until
    *  `configured` is true. */
   layout: { configured: boolean; levels: LocationLevel[] };
+  onboarding: { completed: boolean };
 }
 
 /* ── Products ─────────────────────────────────────────────────────────── */
@@ -260,6 +276,12 @@ export interface Decision {
   ts: string;
 }
 
+/** One of the store's own categories, as the Add product form offers them. */
+export interface StoreCategory {
+  name: string;
+  product_count: number;
+}
+
 export interface CategoryRule {
   category: string;
   ceiling_pct: number | null;
@@ -418,6 +440,7 @@ export interface StreamEvent {
     | 'rules'
     | 'users'
     | 'locations'
+    | 'categories'
     | 'guardrail';
   ts?: string;
   [key: string]: unknown;
@@ -600,9 +623,10 @@ export interface RulesPreview {
 export interface SettingsResponse {
   store: Store | null;
   broker: BrokerState;
-  effective: { host?: string; port?: number; tls?: boolean };
+  /** Super admin only, like the broker fields on `store`. */
+  effective?: { host?: string; port?: number; tls?: boolean };
   /** The stored broker config differs from what the bridge is using. */
-  restart_required: boolean;
+  restart_required?: boolean;
 }
 
 export interface MqttTestResult {

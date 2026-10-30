@@ -123,7 +123,7 @@ async def register_label(body:RegisterLabel,user:Annotated[auth.CurrentUser,Depe
 
 @router.get("")
 async def list_labels(
-    _user: Annotated[auth.CurrentUser, Depends(auth.current_user)],
+    user: Annotated[auth.CurrentUser, Depends(auth.current_user)],
     q: str | None = None,
     status_filter: Annotated[list[str], Query(alias="status")] = [],
     kind: Literal["any", "lcd", "eink"] = "any",
@@ -188,7 +188,12 @@ async def list_labels(
 
     out = serialize.page(rows, total, page_no, page_size)
     out["by_status"] = by_status
-    out["network"] = bus.broker_state() | {"queued": bus.queued_count()}
+    network = bus.broker_state() | {"queued": bus.queued_count()}
+    # Up or down is everyone's business; the broker's address is the super
+    # admin's (see meta.py).
+    if user.role != "superadmin":
+        network = {k: v for k, v in network.items() if k not in ("host", "port", "tls")}
+    out["network"] = network
     return out
 
 

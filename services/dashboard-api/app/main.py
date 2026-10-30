@@ -18,7 +18,9 @@ from fastapi.responses import JSONResponse
 
 from . import auth, bus, db, ingest, migrations, outbox
 from .config import settings
-from .routers import activity, dashboard, labels, locations, meta, products, rules, stream, users
+from .routers import (
+    activity, categories, dashboard, labels, locations, meta, products, rules, stream, users,
+)
 from .routers import auth as auth_router
 from .routers import suggestions, system
 
@@ -53,11 +55,22 @@ async def _check_schema() -> None:
     change keeps the old shape, and fails later as a confusing 500 on whichever
     screen touches the difference. Say so at startup instead."""
     # One table per schema change worth detecting; add to it, never replace.
-    required = ("user_invites", "location_levels")
+    required = ("user_invites", "location_levels", "store_categories")
     missing = [
         t for t in required
         if not await db.fetchval("SELECT to_regclass($1) IS NOT NULL", f"public.{t}")
     ]
+    # Columns added to tables that already existed, which the check above
+    # cannot see. Same rule: add to it, never replace.
+    required_columns = (("store_settings", "onboarded_at"),)
+    for table, column in required_columns:
+        if not await db.fetchval(
+            """SELECT EXISTS (SELECT 1 FROM information_schema.columns
+                               WHERE table_schema = 'public'
+                                 AND table_name = $1 AND column_name = $2)""",
+            table, column,
+        ):
+            missing.append(f"{table}.{column}")
     if missing:
         raise RuntimeError(
             f"The database predates the current schema (no {', '.join(missing)}). Recreate it: "
@@ -89,8 +102,8 @@ async def _ensure_singletons() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.connect()
-    await _check_schema()
     await migrations.apply()
+    await _check_schema()
     await _ensure_singletons()
     await auth.bootstrap_user()
 
@@ -146,6 +159,7 @@ for r in (
     locations.router,
     activity.router,
     rules.router,
+    categories.router,
     users.router,
     stream.router,
 ):

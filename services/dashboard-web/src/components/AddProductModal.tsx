@@ -26,16 +26,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { shelfLine1, shelfLine2 } from '../lib/format';
-import { useDebounced } from '../lib/useStream';
+import { useDebounced, useResource } from '../lib/useStream';
 import type { LabelKind, NewProductBody, ProductDetail } from '../lib/types';
 import { ShelfDisplay } from './ShelfDisplay';
 import { LocationPicker } from './LocationPicker';
 import { Button, Modal } from './ui';
 import s from './AddProductModal.module.css';
 
-/** The handoff's seven, unioned with whatever the catalogue actually holds, so
- *  a store that invented a category keeps it and an empty one still offers
- *  something sensible. */
+/** The handoff's seven. Offered only when the store has no category list of
+ *  its own (onboarding or Settings) and the catalogue uses none either, so an
+ *  empty store still offers something sensible. */
 const CANONICAL_CATEGORIES = [
   'Dairy', 'Bakery', 'Produce', 'Pantry', 'Seafood', 'Electronics', 'Clothing',
 ];
@@ -189,7 +189,15 @@ export function AddProductModal({ categories, canSetPrice, onClose, onCreated }:
     }
   };
 
-  const options = Array.from(new Set([...CANONICAL_CATEGORIES, ...categories])).sort();
+  // The store's own list first, in its order; then anything the catalogue
+  // uses that the list does not, so an invented category is kept.
+  const storeList = useResource(() => api.categories(), []);
+  const options = useMemo(() => {
+    const own = storeList.data?.categories.map((c) => c.name) ?? [];
+    const extra = categories.filter((c) => !own.includes(c)).sort();
+    const all = [...own, ...extra];
+    return all.length ? all : CANONICAL_CATEGORIES;
+  }, [storeList.data, categories]);
 
   return (
     <>

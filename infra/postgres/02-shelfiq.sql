@@ -302,6 +302,18 @@ CREATE TABLE category_rules (
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- The categories this store sells, in the order it lists them. Chosen during
+-- onboarding and edited on Settings; the Add product form offers these. A
+-- product's category stays free text on products.category, so removing a name
+-- here never touches a product — it only stops being suggested.
+CREATE TABLE store_categories (
+    name        TEXT PRIMARY KEY CHECK (char_length(name) BETWEEN 1 AND 60),
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX store_categories_lower_idx ON store_categories (lower(name));
+
 -- Store-wide change limits, one row. The CHECK keeps it that way.
 CREATE TABLE change_limits (
     id                     BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id),
@@ -320,8 +332,13 @@ CREATE TABLE change_limits (
 
 CREATE TABLE store_settings (
     id             BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id),
-    store_name     TEXT NOT NULL DEFAULT 'SJSU Market',
+    -- NULL until first-run onboarding names the store. No default: a made-up
+    -- name would show in the console as if somebody had chosen it.
+    store_name     TEXT CHECK (char_length(store_name) BETWEEN 1 AND 120),
     store_code     TEXT,
+    -- Picked during onboarding; seeds the suggested levels and category rules.
+    store_type     TEXT CHECK (store_type IN ('grocery', 'convenience', 'pharmacy',
+                                              'electronics', 'hardware', 'apparel', 'other')),
     timezone       TEXT NOT NULL DEFAULT 'America/Los_Angeles',
     currency       TEXT NOT NULL DEFAULT 'USD',
     mqtt_host      TEXT NOT NULL DEFAULT 'localhost',
@@ -329,6 +346,10 @@ CREATE TABLE store_settings (
     mqtt_tls       BOOLEAN NOT NULL DEFAULT FALSE,
     -- Seconds without a sighting before a label is shown as offline.
     label_stale_secs INTEGER NOT NULL DEFAULT 900 CHECK (label_stale_secs > 0),
+    -- Set once, when the super admin finishes the store setup wizard. Until
+    -- then the console shows the wizard instead of the Dashboard.
+    onboarded_at   TIMESTAMPTZ,
+    onboarded_by   TEXT REFERENCES users(username),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
