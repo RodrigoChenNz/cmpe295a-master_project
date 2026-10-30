@@ -19,6 +19,7 @@ import {
 } from '../lib/format';
 import { useDebounced, useResource } from '../lib/useStream';
 import { usePageChrome, useShell, useStreamEvents } from '../components/AppShell';
+import { AddLabelsModal } from '../components/AddLabelsModal';
 import {
   Battery, Button, Donut, EmptyState, ErrorState, Pagination, SearchInput,
   SkeletonRows, StatusTag,
@@ -53,6 +54,7 @@ export function Labels() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [resending, setResending] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const query = useDebounced(q);
 
@@ -289,6 +291,9 @@ export function Labels() {
         </span>
 
         <span className={s.toolbarRight}>
+          <Button size="toolbar" onClick={() => setAdding(true)}>
+            Add labels
+          </Button>
           <Button
             size="toolbar"
             variant="secondary"
@@ -311,7 +316,7 @@ export function Labels() {
           body={
             statusFilter || query || location
               ? 'Clear the filters to see the whole network.'
-              : 'Labels appear here once the edge gateway reports them.'
+              : 'Set up your first tags with Add labels.'
           }
           actions={
             statusFilter || query || location ? (
@@ -326,7 +331,9 @@ export function Labels() {
               >
                 Clear filters
               </Button>
-            ) : undefined
+            ) : (
+              <Button onClick={() => setAdding(true)}>Add labels</Button>
+            )
           }
         />
       ) : (
@@ -421,11 +428,20 @@ export function Labels() {
       )}
 
       <p className={s.foot}>
-        A label&rsquo;s status is what this console last heard, not what the glass
-        is showing. No label acknowledges a price, so &ldquo;online&rdquo; means it
-        reported in recently — a device can be online and still displaying a
-        stale price from flash.
+        A label&rsquo;s status is what this console last heard from it. Labels with a
+        tag report what their glass shows at every check-in, so &ldquo;online&rdquo;
+        means it showed the current price and &ldquo;awaiting sync&rdquo; means it
+        hasn&rsquo;t yet. A label with no tag behind it never reports.
       </p>
+
+      {adding && (
+        <AddLabelsModal
+          onClose={() => {
+            setAdding(false);
+            res.reload();
+          }}
+        />
+      )}
     </>
   );
 }

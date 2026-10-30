@@ -55,7 +55,8 @@ export function ProductDetail() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [priceDraft, setPriceDraft] = useState('');
-  const [reasonTag, setReasonTag] = useState('Manager set');
+  // Optional: left empty, the shelf shows the price alone.
+  const [reasonTag, setReasonTag] = useState('');
   const [pricing, setPricing] = useState(false);
   const [moving, setMoving] = useState(false);
   const [moveTo, setMoveTo] = useState<string | null>(null);
@@ -176,7 +177,7 @@ export function ProductDetail() {
   const setPrice = async () => {
     setPricing(true);
     try {
-      const result = await api.setPrice(productId, priceDraft, reasonTag);
+      const result = await api.setPrice(productId, priceDraft, reasonTag.trim());
       toast(
         result.published
           ? `${money(priceDraft)} published to the shelf.`
@@ -422,8 +423,9 @@ export function ProductDetail() {
                   className={`field ${s.monoInput}`}
                   value={reasonTag}
                   maxLength={16}
+                  placeholder="Reason (optional)"
                   onChange={(e) => setReasonTag(e.target.value)}
-                  aria-label="Reason tag, shown on the shelf label"
+                  aria-label="Reason tag, shown on the shelf label (optional)"
                 />
                 <span className={s.counter} data-over={reasonTag.length > 16 || undefined}>
                   {reasonTag.length}/16
@@ -438,7 +440,8 @@ export function ProductDetail() {
               </Button>
             </div>
             <p className={s.priceNote}>
-              The reason tag goes on line 2 of the shelf label, verbatim. It is
+              The reason tag goes under the price on the shelf label, verbatim.
+              Leave it empty and the label shows the price alone. The price is
               checked against this product&rsquo;s band:{' '}
               {product.min_price && product.max_price
                 ? `${money(product.min_price)} – ${money(product.max_price)}`

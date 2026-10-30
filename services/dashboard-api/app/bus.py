@@ -4,6 +4,8 @@ Two directions, deliberately separate:
 
   inbound   retail/proposal/+, retail/explain/+, retail/inventory/+
             persisted, then offered to the decision gate
+            retail/shelf/+ (draft contract), retail/label/discovered
+            what each label shows and its health; tags not yet set up
 
   outbound  retail/price/+, retail/guardrail/+
             published by this service and by nothing else in the system
@@ -102,15 +104,18 @@ _publish_backlog: list[tuple[str, bytes, int, bool]] = []
 _BACKLOG_MAX = 500
 
 
-async def publish(topic: str, payload: dict, *, qos: int = 1, retain: bool = False) -> bool:
+async def publish(topic: str, payload: dict | None, *, qos: int = 1, retain: bool = False) -> bool:
     """Publish to MQTT. Returns True if it left the process.
+
+    `payload=None` with `retain=True` publishes an empty message, which is how
+    MQTT deletes a retained one.
 
     On failure the message is queued and replayed on reconnect, and the caller
     is told it did not go out so the UI can say "queued, not on the shelf yet"
     instead of claiming success. The database write has already happened by this
     point and is what makes the replay safe.
     """
-    body = json.dumps(payload, separators=(",", ":")).encode()
+    body = b"" if payload is None else json.dumps(payload, separators=(",", ":")).encode()
     if _client is None:
         _enqueue(topic, body, qos, retain)
         return False
@@ -202,7 +207,11 @@ async def run(stop: asyncio.Event) -> None:
                 log.info("MQTT connected to %s:%s", settings.mqtt_host, settings.mqtt_port)
 
                 await _drain_backlog()
-                for topic in ("retail/proposal/+", "retail/explain/+", "retail/inventory/+"):
+                for topic in ("retail/proposal/+", "retail/explain/+", "retail/inventory/+",
+                              "retail/shelf/+", "retail/label/discovered",
+                              # Our own retained configs, read back so ones that
+                              # disagree with the database can be put right.
+                              "retail/label/+/config"):
                     await client.subscribe(topic, qos=1)
 
                 async for message in client.messages:

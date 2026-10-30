@@ -278,8 +278,12 @@ async def publish_inventory(
 async def heartbeat_labels(pool: asyncpg.Pool, rng: random.Random) -> None:
     """Pretend the gateway reported in. NOT a contract message — see the module
     docstring. This writes to Postgres because there is no topic to write to."""
+    # Only labels with no real tag behind them. A label with a device_id
+    # reports for itself over retail/shelf/ (draft contract), and faking its
+    # sightings would mark pushes confirmed that never reached its glass.
     labels = await pool.fetch(
-        "SELECT label_id, battery_pct FROM shelf_labels WHERE product_id IS NOT NULL"
+        """SELECT label_id, battery_pct FROM shelf_labels
+            WHERE product_id IS NOT NULL AND device_id IS NULL"""
     )
     seen = 0
     for label in labels:
@@ -309,7 +313,8 @@ async def heartbeat_labels(pool: asyncpg.Pool, rng: random.Random) -> None:
         """UPDATE label_pushes SET result = 'confirmed', settled_at = now()
             WHERE result = 'pending'
               AND label_id IN (SELECT label_id FROM shelf_labels
-                                WHERE last_seen_at > now() - interval '10 seconds')
+                                WHERE device_id IS NULL
+                                  AND last_seen_at > now() - interval '10 seconds')
         RETURNING label_id"""
     )
     print(f"heartbeat {seen}/{len(labels)} labels seen"

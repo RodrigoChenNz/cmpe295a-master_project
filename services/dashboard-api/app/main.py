@@ -55,14 +55,18 @@ async def _check_schema() -> None:
     change keeps the old shape, and fails later as a confusing 500 on whichever
     screen touches the difference. Say so at startup instead."""
     # One table per schema change worth detecting; add to it, never replace.
-    required = ("user_invites", "location_levels", "store_categories")
+    required = ("user_invites", "location_levels", "store_categories", "label_discoveries")
     missing = [
         t for t in required
         if not await db.fetchval("SELECT to_regclass($1) IS NOT NULL", f"public.{t}")
     ]
     # Columns added to tables that already existed, which the check above
     # cannot see. Same rule: add to it, never replace.
-    required_columns = (("store_settings", "onboarded_at"),)
+    required_columns = (
+        ("store_settings", "onboarded_at"),
+        ("store_settings", "label_pairing_until"),
+        ("shelf_labels", "device_id"),
+    )
     for table, column in required_columns:
         if not await db.fetchval(
             """SELECT EXISTS (SELECT 1 FROM information_schema.columns
