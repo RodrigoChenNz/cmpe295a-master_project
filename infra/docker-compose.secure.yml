@@ -1,0 +1,50 @@
+# Layer after docker-compose.software.yml. Generate identities with tools/setup_tls.py.
+services:
+  mosquitto:
+    ports: !override ["127.0.0.1:8883:8883"]
+    volumes:
+      - ../secrets/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ../secrets/acl:/mosquitto/config/acl:ro
+      - ../secrets/certs:/mosquitto/certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -p 8883 --cafile /mosquitto/certs/ca.pem --cert /mosquitto/certs/api.pem --key /mosquitto/certs/api.key -t retail/label/health/ping -m '{}' -q 1"]
+  dashboard-api:
+    environment:
+      MQTT_PORT: 8883
+      MQTT_TLS: "true"
+      MQTT_CA_FILE: /srv/certs/ca.pem
+      MQTT_CERT_FILE: /srv/certs/api.pem
+      MQTT_KEY_FILE: /srv/certs/api.key
+    volumes: ["../secrets/certs:/srv/certs:ro"]
+  simulator:
+    environment:
+      MQTT_PORT: 8883
+      MQTT_TLS: "true"
+      MQTT_CA_FILE: /srv/certs/ca.pem
+      MQTT_CERT_FILE: /srv/certs/simulator.pem
+      MQTT_KEY_FILE: /srv/certs/simulator.key
+    volumes: ["../secrets/certs:/srv/certs:ro"]
+  forecaster:
+    environment:
+      MQTT_PORT: 8883
+      MQTT_TLS: "true"
+      MQTT_CA_FILE: /srv/certs/ca.pem
+      MQTT_CERT_FILE: /srv/certs/forecaster.pem
+      MQTT_KEY_FILE: /srv/certs/forecaster.key
+    volumes: ["../secrets/certs:/srv/certs:ro"]
+  pricing-agent:
+    environment:
+      MQTT_PORT: 8883
+      MQTT_TLS: "true"
+      MQTT_CA_FILE: /srv/certs/ca.pem
+      MQTT_CERT_FILE: /srv/certs/pricing.pem
+      MQTT_KEY_FILE: /srv/certs/pricing.key
+    volumes: ["../secrets/certs:/srv/certs:ro"]
+  device-emulator:
+    environment:
+      MQTT_PORT: 8883
+      MQTT_TLS: "true"
+      MQTT_CA_FILE: /srv/certs/ca.pem
+      MQTT_CERT_FILE: /srv/certs/device.pem
+      MQTT_KEY_FILE: /srv/certs/device.key
+    volumes: ["../secrets/certs:/srv/certs:ro"]

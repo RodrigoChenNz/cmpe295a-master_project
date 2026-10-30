@@ -1,6 +1,6 @@
 # dashboard-web — Layer 5
 
-**Owner:** Rodrigo Chen · **Status:** pricing loop built; five screens stubbed
+**Owner:** Rodrigo Chen · **Status:** software integration implemented
 
 The ShelfIQ console. React 19 · Vite · TypeScript · plain CSS (custom
 properties + CSS Modules). No component library, no Tailwind, no icon package,
@@ -32,8 +32,9 @@ For local work outside Docker: `npm install && npm run dev`, with
 | `/products/:id` | Product detail — the 16-character shelf name and its policy |
 | `/activity` | Activity log — time-first, with a CSV export |
 
-Stubbed, with the API half already working: Shelf labels, Label detail, Pricing
-rules, Settings, Users and roles, Locations. Each stub names its endpoints.
+Additional implemented routes: Shelf labels, Label detail and pairing, Pricing rules, Settings, Users and roles, Locations, and `/system` software status. Label registration and correlated emulator render details are integrated.
+
+For the full software stack use `make software`; see [software guide](../../docs/SOFTWARE.md).
 
 ## Where things are
 

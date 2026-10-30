@@ -21,7 +21,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from .. import auth, bus, db, gate, serialize
+from .. import auth, db, gate, serialize, decisions
 
 router = APIRouter(prefix="/api/suggestions", tags=["suggestions"])
 
@@ -153,6 +153,7 @@ async def get_suggestion(
     )
 
     item = serialize.row(row)
+    item["explanation_metadata"] = await db.fetchval("SELECT metadata FROM shap_vectors WHERE decision_id=$1",decision_id)
     item["why"] = gate.compose_reason(
         reason_tag=row["reason_tag"],
         rationale=row["rationale"],
@@ -185,103 +186,7 @@ async def approve(
     body: ApproveBody,
     user: Annotated[auth.CurrentUser, Depends(auth.require_manager)],
 ) -> dict:
-    # Claim the proposal first. The WHERE status = 'pending' is the lock: two
-    # managers clicking Approve at the same instant means exactly one UPDATE
-    # matches a row, and the other gets the 409 below.
-    async with db.pool().acquire() as conn:
-        async with conn.transaction():
-            row = await conn.fetchrow(
-                """SELECT pr.product_id, pr.proposed_price, pr.current_price,
-                          pr.reason_tag, pr.agent_version,
-                          p.min_price, p.max_price
-                     FROM proposals pr
-                     JOIN products p ON p.product_id = pr.product_id
-                    WHERE pr.decision_id = $1
-                      FOR UPDATE OF pr""",
-                decision_id,
-            )
-            if row is None:
-                raise HTTPException(status.HTTP_404_NOT_FOUND, "No such suggestion.")
-
-            final = body.price if body.price is not None else row["proposed_price"]
-            overridden = body.price is not None and body.price != row["proposed_price"]
-
-            # "Manual prices are still checked against your guardrails."
-            lo, hi = row["min_price"], row["max_price"]
-            if lo is not None and final < lo:
-                raise HTTPException(
-                    status.HTTP_409_CONFLICT,
-                    f"${final} is below this product's ${lo} floor.",
-                )
-            if hi is not None and final > hi:
-                raise HTTPException(
-                    status.HTTP_409_CONFLICT,
-                    f"${final} is above this product's ${hi} ceiling.",
-                )
-
-            claimed = await conn.execute(
-                """UPDATE proposals
-                      SET status = $2, decided_by = $3, decided_at = now(),
-                          final_price = $4
-                    WHERE decision_id = $1 AND status = 'pending'""",
-                decision_id,
-                "overridden" if overridden else "approved",
-                user.username,
-                final,
-            )
-            if claimed.endswith(" 0"):
-                existing = await conn.fetchrow(
-                    "SELECT status, decided_by FROM proposals WHERE decision_id = $1",
-                    decision_id,
-                )
-                raise HTTPException(
-                    status.HTTP_409_CONFLICT,
-                    f"Already {existing['status']}"
-                    + (f" by {existing['decided_by']}." if existing["decided_by"] else "."),
-                )
-
-            await conn.execute(
-                """INSERT INTO agent_audit_log
-                       (event_type, product_id, decision_id, actor, detail, ts)
-                   VALUES ($1, $2, $3, $4, $5, now())""",
-                "proposal_overridden" if overridden else "proposal_approved",
-                row["product_id"],
-                decision_id,
-                user.username,
-                {
-                    "final_price": float(final),
-                    "agent_proposed": float(row["proposed_price"]),
-                },
-            )
-
-    result = await gate.publish_price(
-        product_id=row["product_id"],
-        price=final,
-        reason_tag=row["reason_tag"],
-        approval="override" if overridden else "manager",
-        approved_by=user.username,
-        decision_id=decision_id,
-        agent_version=row["agent_version"],
-    )
-
-    bus.emit(
-        "suggestions",
-        decided=[decision_id],
-        product_id=row["product_id"],
-        status="overridden" if overridden else "approved",
-    )
-
-    return {
-        "decision_id": decision_id,
-        "product_id": row["product_id"],
-        "status": "overridden" if overridden else "approved",
-        "final_price": str(final),
-        "agent_proposed": str(row["proposed_price"]),
-        # When this is false the price is approved and audited but has not left
-        # the building, and the UI says "queued" rather than "on the shelf".
-        "published": result["published"],
-        "queued": result["queued"],
-    }
+    return await decisions.decide(decision_id,actor=user.username,price=body.price)
 
 
 class RejectBody(BaseModel):
@@ -294,46 +199,7 @@ async def reject(
     body: RejectBody,
     user: Annotated[auth.CurrentUser, Depends(auth.require_manager)],
 ) -> dict:
-    """Decline a proposal. The shelf keeps its current price and nothing is
-    published — a rejection is a decision about a recommendation, not a price
-    change, so it belongs in the audit log and not in price_history."""
-    row = await db.fetchrow(
-        "SELECT product_id FROM proposals WHERE decision_id = $1", decision_id
-    )
-    if row is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such suggestion.")
-
-    claimed = await db.execute(
-        """UPDATE proposals
-              SET status = 'rejected', decided_by = $2, decided_at = now(),
-                  decline_reason = $3
-            WHERE decision_id = $1 AND status = 'pending'""",
-        decision_id,
-        user.username,
-        body.reason,
-    )
-    if claimed.endswith(" 0"):
-        existing = await db.fetchrow(
-            "SELECT status, decided_by FROM proposals WHERE decision_id = $1",
-            decision_id,
-        )
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, f"Already {existing['status']}."
-        )
-
-    await db.execute(
-        """INSERT INTO agent_audit_log
-               (event_type, product_id, decision_id, actor, detail, ts)
-           VALUES ('proposal_rejected', $1, $2, $3, $4, now())""",
-        row["product_id"],
-        decision_id,
-        user.username,
-        {"reason": body.reason},
-    )
-    bus.emit("suggestions", decided=[decision_id],
-             product_id=row["product_id"], status="rejected")
-
-    return {"decision_id": decision_id, "status": "rejected"}
+    return await decisions.decide(decision_id,actor=user.username,action='reject',reason=body.reason)
 
 
 class BulkBody(BaseModel):

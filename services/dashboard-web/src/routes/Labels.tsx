@@ -1,15 +1,4 @@
-/* 07 Shelf labels — the shelf network, as the console believes it to be.
- *
- * Everything here is belief, not observation. The dashboard and the edge nodes
- * are independent MQTT subscribers and the contract carries no acknowledgement,
- * so "online" means "we heard from it inside the stale window" and nothing
- * stronger. The screen is worded accordingly.
- *
- * The donut is a filter, not a chart: clicking a legend row narrows the table
- * to that status and dims the other arcs. Its counts respond to the search and
- * the location, but **not** to the status facet they themselves drive — a count
- * that changes when you click the row beside it is unreadable.
- */
+/* Label health, registration, pairing and correlated delivery status. */
 
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -21,7 +10,7 @@ import { useDebounced, useResource } from '../lib/useStream';
 import { usePageChrome, useShell, useStreamEvents } from '../components/AppShell';
 import {
   Battery, Button, Donut, EmptyState, ErrorState, Pagination, SearchInput,
-  SkeletonRows, StatusTag,
+  SkeletonRows, StatusTag, Modal,
 } from '../components/ui';
 import type { LocationNode } from '../lib/types';
 import s from './Labels.module.css';
@@ -41,6 +30,11 @@ export function Labels() {
   const navigate = useNavigate();
   const { user, toast } = useShell();
   const canResend = isManagerRole(user.role);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [labelId, setLabelId] = useState('');
+  const [labelKind, setLabelKind] = useState<'lcd' | 'eink'>('lcd');
+  const [registerError, setRegisterError] = useState('');
+  const [registerBusy, setRegisterBusy] = useState(false);
   const [params] = useSearchParams();
 
   const [q, setQ] = useState('');
@@ -73,7 +67,7 @@ export function Labels() {
 
   useStreamEvents(['labels', 'price', 'broker', 'locations'], res.reload);
 
-  usePageChrome({ title: 'Shelf labels' }, []);
+  usePageChrome({ title: 'Shelf labels', actions: user.role !== 'viewer' ? <Button onClick={() => setRegisterOpen(true)}>Register label</Button> : undefined }, [user.role]);
 
   const rows = res.data?.rows ?? [];
   const counts = res.data?.by_status ?? {};
@@ -124,7 +118,7 @@ export function Labels() {
       const result = await api.resendLabels(ids);
       toast(
         result.skipped.length === 0
-          ? `Re-published the current price to ${result.count} ${plural(result.count, 'label')}.`
+          ? `Queued the current price for ${result.count} ${plural(result.count, 'label')}.`
           : `${result.count} sent, ${result.skipped.length} skipped: ${result.skipped[0]?.reason ?? ''}`,
         result.skipped.length === 0 ? 'ok' : 'bad',
       );
@@ -148,6 +142,20 @@ export function Labels() {
 
   return (
     <>
+      {registerOpen && <Modal title="Register shelf label" onClose={() => setRegisterOpen(false)}>
+        <form style={{display: 'grid', gap: 16}} onSubmit={async e => {
+          e.preventDefault(); setRegisterBusy(true); setRegisterError('');
+          try { const result = await api.registerLabel({label_id: labelId, kind: labelKind}); setRegisterOpen(false); navigate(`/labels/${result.label_id}`); }
+          catch (error) { setRegisterError(error instanceof Error ? error.message : 'Registration failed'); }
+          finally { setRegisterBusy(false); }
+        }}>
+          <label>Label identifier<input data-autofocus required pattern="SHLF-[0-9]{3,}" placeholder="SHLF-001" value={labelId} onChange={e => setLabelId(e.target.value)} /></label>
+          <label>Display type<select value={labelKind} onChange={e => setLabelKind(e.target.value as 'lcd' | 'eink')}><option value="lcd">LCD</option><option value="eink">E ink</option></select></label>
+          <p>After registering, pair this label with a product. A device or emulator must report before it appears online.</p>
+          {registerError && <p role="alert">{registerError}</p>}
+          <Button type="submit" busy={registerBusy}>Register label</Button>
+        </form>
+      </Modal>}
       <div className={s.topRow}>
         {/* ── Operational health ─────────────────────────────────────── */}
         <section className={`card ${s.health}`}>
@@ -413,10 +421,9 @@ export function Labels() {
       )}
 
       <p className={s.foot}>
-        A label&rsquo;s status is what this console last heard, not what the glass
-        is showing. No label acknowledges a price, so &ldquo;online&rdquo; means it
-        reported in recently — a device can be online and still displaying a
-        stale price from flash.
+        Online means a recent report. A confirmed price requires a matching
+        publication identifier, price and rendered lines. Emulator reports verify
+        the software path; physical devices must implement the same contract.
       </p>
     </>
   );

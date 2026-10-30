@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ShelfObservation",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "label_id": {
+      "type": "string",
+      "pattern": "^SHLF-[0-9]{3,}$"
+    },
+    "product_id": {
+      "type": "string",
+      "pattern": "^SKU-[0-9]{3,}$"
+    },
+    "event": {
+      "enum": [
+        "rendered",
+        "heartbeat"
+      ]
+    },
+    "publication_id": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "price": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01
+    },
+    "line1": {
+      "type": "string",
+      "maxLength": 16
+    },
+    "line2": {
+      "type": "string",
+      "maxLength": 16
+    },
+    "rendered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "firmware": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "rssi": {
+      "type": "integer",
+      "minimum": -120,
+      "maximum": 0
+    },
+    "battery": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "emulated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "label_id",
+    "product_id",
+    "event",
+    "ts",
+    "firmware",
+    "emulated"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event": {
+            "const": "rendered"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "publication_id",
+          "price",
+          "line1",
+          "line2",
+          "rendered_at"
+        ],
+        "properties": {
+          "publication_id": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  ]
+}

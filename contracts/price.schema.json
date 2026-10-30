@@ -2,10 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sjsu.edu/cmpe295/contracts/price.schema.json",
   "title": "PriceUpdate",
-  "description": "The approved, live shelf price. Published to retail/price/{product_id} by dashboard-api and by nothing else — the pricing agent publishes proposals, never prices. QoS 1, retained, so an edge node that reboots immediately receives the current price. Every message here represents a decision a human either made or delegated by policy.",
+  "description": "The approved, live shelf price. Published to retail/price/{product_id} by dashboard-api and by nothing else \u2014 the pricing agent publishes proposals, never prices. QoS 1, retained, so an edge node that reboots immediately receives the current price. Every message here represents a decision a human either made or delegated by policy.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["product_id", "price", "currency", "reason_tag", "approval", "approved_by", "ts"],
+  "required": [
+    "product_id",
+    "price",
+    "currency",
+    "reason_tag",
+    "approval",
+    "approved_by",
+    "ts"
+  ],
   "properties": {
     "product_id": {
       "type": "string",
@@ -20,12 +28,17 @@
     },
     "currency": {
       "type": "string",
-      "enum": ["USD"]
+      "enum": [
+        "USD"
+      ]
     },
     "decision_id": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "uuid",
-      "description": "The proposal this price came from, and the join key to its ExplainVector and audit row. NULL when a manager set the price with no agent proposal behind it — in that case there is no explanation to show, and the UI must say so rather than display a stale one."
+      "description": "The proposal this price came from, and the join key to its ExplainVector and audit row. NULL when a manager set the price with no agent proposal behind it \u2014 in that case there is no explanation to show, and the UI must say so rather than display a stale one."
     },
     "reason_tag": {
       "type": "string",
@@ -35,8 +48,12 @@
     },
     "approval": {
       "type": "string",
-      "enum": ["auto", "manager", "override"],
-      "description": "How this price was authorized. 'auto' — inside the product's policy, applied without a human. 'manager' — a human approved the agent's proposed price as-is. 'override' — a human set a different price; `price` will NOT equal the proposal's proposed_price, so any explanation attached to decision_id explains what the agent WANTED, not what shipped. Consumers must not present it as explaining this price."
+      "enum": [
+        "auto",
+        "manager",
+        "override"
+      ],
+      "description": "How this price was authorized. 'auto' \u2014 inside the product's policy, applied without a human. 'manager' \u2014 a human approved the agent's proposed price as-is. 'override' \u2014 a human set a different price; `price` will NOT equal the proposal's proposed_price, so any explanation attached to decision_id explains what the agent WANTED, not what shipped. Consumers must not present it as explaining this price."
     },
     "approved_by": {
       "type": "string",
@@ -44,13 +61,24 @@
       "description": "Username of the deciding manager, or the literal 'policy' when approval is 'auto'."
     },
     "agent_version": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Carried through from the originating proposal. NULL for a manager-originated price."
     },
     "ts": {
       "type": "string",
       "format": "date-time",
       "description": "UTC ISO-8601. The moment of approval, not of the original proposal."
+    },
+    "publication_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "display_name": {
+      "type": "string",
+      "maxLength": 16
     }
   },
   "examples": [

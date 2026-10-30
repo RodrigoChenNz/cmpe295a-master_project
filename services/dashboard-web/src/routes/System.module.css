@@ -1,0 +1,10 @@
+.layout { display: grid; gap: 24px; }
+.section { padding: 28px; }
+.section h2 { margin: 0 0 12px; font-size: 20px; }
+.section p { margin: 12px 0; line-height: 1.6; }
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 28px 0; }
+.metrics dt { font-size: 13px; color: var(--text-secondary, #666); }
+.metrics dd { margin: 8px 0 0; font-size: 26px; font-variant-numeric: tabular-nums; }
+.models { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.models ul { padding-left: 20px; line-height: 1.8; overflow-wrap: anywhere; }
+@media (max-width: 800px) { .metrics { grid-template-columns: 1fr 1fr; } .models { grid-template-columns: 1fr; } }

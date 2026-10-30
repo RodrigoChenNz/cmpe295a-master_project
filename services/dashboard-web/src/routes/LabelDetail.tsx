@@ -1,16 +1,4 @@
-/* 08 Label detail — one device, and what the console actually knows about it.
- *
- * The honest-wording problems on this screen are the whole job:
- *
- * - The preview is captioned "read back from" the label, but nothing is read
- *   back. It is the last thing *published*, rendered by the same function the
- *   publisher uses.
- * - "Settled at", not "Confirmed at". `label_pushes.result = 'confirmed'` is
- *   written by a 45-second timeout in `ingest.settle_label_pushes`, not by an
- *   acknowledgement — there is no topic on which a label agrees it redrew.
- * - Blink reports that the message was sent or queued. Never that the label is
- *   blinking, because nothing tells us whether it is.
- */
+/* Device detail: previews use reported renders when available; identify commands have no ACK. */
 
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -96,7 +84,7 @@ export function LabelDetail() {
       if (result.count === 0) {
         toast(result.skipped[0]?.reason ?? 'Nothing to resend.', 'bad');
       } else {
-        toast(`Re-published the current price to ${label.label_id}.`);
+        toast(`Queued the current price for ${label.label_id}.`);
       }
       res.reload();
     });
@@ -157,15 +145,15 @@ export function LabelDetail() {
             {shelf_render ? (
               <ShelfDisplay
                 kind={label.kind}
-                line1={shelf_render.line1}
-                line2={shelf_render.line2}
+                line1={label.rendered_line1 ?? shelf_render.line1}
+                line2={label.rendered_line2 ?? shelf_render.line2}
                 fullName={label.product_name ?? label.label_id}
                 price={lastPush?.price ?? null}
                 brand={label.brand ?? null}
                 slot={label.slot_code}
                 size={label.kind === 'eink' ? 'md' : 'lg'}
                 publishedAt={as_published_at}
-                caption="Shelf render — as published"
+                caption={label.rendered_at ? `${label.emulated ? 'Emulator' : 'Device'} reported render ${relative(label.rendered_at)}` : 'Shelf render — awaiting acknowledgement'}
               />
             ) : (
               <p className={s.noRender}>
@@ -177,7 +165,7 @@ export function LabelDetail() {
             <dl className={s.meta}>
               <MetaRow label="Pushed at">{dateTime(lastPush?.published_at)}</MetaRow>
               {/* Not "Confirmed at" — see the module docstring. */}
-              <MetaRow label="Settled at" hint="No label acknowledges a price; this is when the push stopped being in flight.">
+              <MetaRow label="Delivery settled" hint="A confirmed result requires a matching device render acknowledgement.">
                 {lastPush?.settled_at ? dateTime(lastPush.settled_at) : '—'}
               </MetaRow>
               <MetaRow label="Last result">

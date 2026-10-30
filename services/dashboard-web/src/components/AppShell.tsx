@@ -90,7 +90,7 @@ interface NavEntry {
   badge?: 'pending';
 }
 
-const NAV_MAIN: NavEntry[] = [{ to: '/', label: 'Dashboard', icon: NAV_ICON.overview }];
+const NAV_MAIN: NavEntry[] = [{ to: '/', label: 'Dashboard', icon: NAV_ICON.overview }, { to: '/system', label: 'Software status', icon: NAV_ICON.activity }];
 
 const NAV_RESOURCES: NavEntry[] = [
   { to: '/products', label: 'Products', icon: NAV_ICON.products },

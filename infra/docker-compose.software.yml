@@ -1,0 +1,60 @@
+# Complete synthetic software loop. Separate database from real and fake-demo modes.
+services:
+  postgres:
+    volumes:
+      - ./postgres/03-seed.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
+      - postgres-software-data:/var/lib/postgresql/data
+  dashboard-api:
+    environment:
+      SHELFIQ_BOOTSTRAP_USER: ${SHELFIQ_BOOTSTRAP_USER:-admin}
+      SHELFIQ_BOOTSTRAP_EMAIL: ${SHELFIQ_BOOTSTRAP_EMAIL:-admin@admin.com}
+      SHELFIQ_BOOTSTRAP_NAME: ${SHELFIQ_BOOTSTRAP_NAME:-Admin}
+      SHELFIQ_BOOTSTRAP_PASSWORD: ${SHELFIQ_BOOTSTRAP_PASSWORD:?Set the local software account password in .env}
+  simulator:
+    build: &worker-build
+      context: ..
+      dockerfile: services/Dockerfile.worker
+    command: ["simulator"]
+    environment: &worker-env
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      DATABASE_URL: postgresql://retail:retail_dev_only@postgres:5432/retail_pricing
+      SIM_INTERVAL: ${SIM_INTERVAL:-15}
+    depends_on:
+      dashboard-api: {condition: service_healthy}
+    restart: unless-stopped
+  forecaster:
+    build: *worker-build
+    command: ["forecaster"]
+    environment:
+      <<: *worker-env
+      FORECAST_METHOD: seasonal
+    depends_on:
+      dashboard-api: {condition: service_healthy}
+    restart: unless-stopped
+  pricing-agent:
+    build: *worker-build
+    command: ["pricing"]
+    environment:
+      <<: *worker-env
+      PRICING_POLICY: ${PRICING_POLICY:-rule}
+      PRICING_MODEL: ${PRICING_MODEL:-}
+    volumes:
+      - ../artifacts:/srv/artifacts:ro
+    depends_on:
+      dashboard-api: {condition: service_healthy}
+    restart: unless-stopped
+  device-emulator:
+    build: *worker-build
+    command: ["device"]
+    environment:
+      <<: *worker-env
+      DEVICE_STATE: /srv/artifacts/device.sqlite3
+    volumes:
+      - device-flash:/srv/artifacts
+    depends_on:
+      dashboard-api: {condition: service_healthy}
+    restart: unless-stopped
+volumes:
+  postgres-software-data:
+  device-flash:

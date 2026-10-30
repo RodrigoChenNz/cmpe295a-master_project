@@ -102,130 +102,63 @@ async def evaluate_proposal(decision_id: str) -> GateVerdict:
 
 
 async def publish_price(
-    *,
-    product_id: str,
-    price: Decimal,
-    reason_tag: str,
-    approval: str,
-    approved_by: str,
-    decision_id: str | None,
-    agent_version: str | None,
+    *, product_id: str, price: Decimal, reason_tag: str, approval: str,
+    approved_by: str, decision_id: str | None, agent_version: str | None,
+    connection=None,
 ) -> dict[str, Any]:
-    """Record an approved price and push it to the shelf.
+    """Record authorization and a durable outbound job in the SAME transaction.
 
-    Order matters and is not an accident: the row is written first, then the
-    message is published. A crash between the two leaves a price in the audit
-    log that never reached a shelf, which the label-push row will show as
-    unsettled. The opposite order would put a price on a shelf with no record
-    of who approved it, and that is the one failure this project cannot have.
+    A caller deciding a proposal supplies its connection, so a crash cannot
+    commit a decision without its price history and delivery job.
     """
+    from . import outbox
+    from retail.contracts import validate
     if approval not in ("auto", "manager", "override"):
-        raise ValueError(f"approval must be auto|manager|override, got {approval!r}")
-    if len(reason_tag) > 16:
-        # The 16-character cap is LCD hardware, enforced at the publisher so it
-        # is never patched in firmware. Truncating silently would ship a
-        # misleading explanation to the shelf edge, so this raises instead.
-        raise ValueError(
-            f"reason_tag {reason_tag!r} is {len(reason_tag)} characters; "
-            "LCD line 2 holds 16"
-        )
+        raise ValueError("Invalid approval category")
+    if not price.is_finite() or price <= 0 or price != price.quantize(Decimal(".01")):
+        raise ValueError("Price must be positive and have at most two decimal places")
+    if not reason_tag or len(reason_tag) > 16:
+        raise ValueError("Reason tag must have between 1 and 16 characters")
+    async def record(conn):
+        now = datetime.now(timezone.utc)
+        product = await conn.fetchrow("SELECT * FROM products WHERE product_id=$1 FOR UPDATE", product_id)
+        if product is None:
+            raise ValueError("Unknown product")
+        if (product['min_price'] is not None and price < product['min_price']) or (product['max_price'] is not None and price > product['max_price']):
+            raise ValueError("Price is outside the configured product bounds")
+        history_id = await conn.fetchval(
+            """INSERT INTO price_history(product_id,price,currency,decision_id,reason_tag,
+                   approval,approved_by,agent_version,ts)
+               VALUES($1,$2,'USD',$3,$4,$5,$6,$7,$8) RETURNING id""",
+            product_id,price,decision_id,reason_tag,approval,approved_by,agent_version,now)
+        await conn.execute(
+            """INSERT INTO agent_audit_log(event_type,product_id,decision_id,actor,detail,ts)
+               VALUES('price_published',$1,$2,$3,$4,$5)""",
+            product_id,decision_id,approved_by,{'price':money_num(price),'approval':approval,'publication_id':history_id,'delivery':'queued'},now)
+        label = await conn.fetchrow("SELECT label_id FROM shelf_labels WHERE product_id=$1", product_id)
+        push_id = None
+        display_name = (product['display_name'] or product['name'])[:16]
+        if label:
+            line1,line2=render_lines(display_name,price,reason_tag)
+            push_id=await conn.fetchval(
+                """INSERT INTO label_pushes(label_id,product_id,decision_id,price,line1,line2,result,published_at,publication_id)
+                   VALUES($1,$2,$3,$4,$5,$6,'pending',$7,$8) RETURNING id""",
+                label['label_id'],product_id,decision_id,price,line1,line2,now,history_id)
+            await conn.execute("UPDATE shelf_labels SET status='syncing' WHERE label_id=$1",label['label_id'])
+        payload=dict(product_id=product_id,price=money_num(price),currency='USD',decision_id=str(decision_id) if decision_id else None,
+                     reason_tag=reason_tag,approval=approval,approved_by=approved_by,agent_version=agent_version,
+                     ts=now.isoformat().replace('+00:00','Z'),publication_id=history_id,display_name=display_name)
+        validate('price',payload)
+        await outbox.enqueue(conn,f'retail/price/{product_id}',payload,retained=True)
+        return dict(history_id=history_id,published=False,queued=1,label_push_id=push_id)
 
-    now = datetime.now(timezone.utc)
-
+    if connection is not None:
+        return await record(connection)
     async with db.pool().acquire() as conn:
         async with conn.transaction():
-            history_id = await conn.fetchval(
-                """INSERT INTO price_history
-                       (product_id, price, currency, decision_id, reason_tag,
-                        approval, approved_by, agent_version, ts)
-                   VALUES ($1, $2, 'USD', $3, $4, $5, $6, $7, $8)
-                   RETURNING id""",
-                product_id,
-                price,
-                decision_id,
-                reason_tag,
-                approval,
-                approved_by,
-                agent_version,
-                now,
-            )
-            await conn.execute(
-                """INSERT INTO agent_audit_log
-                       (event_type, product_id, decision_id, actor, detail, ts)
-                   VALUES ('price_published', $1, $2, $3, $4, $5)""",
-                product_id,
-                decision_id,
-                approved_by,
-                {"price": money_num(price), "approval": approval},
-                now,
-            )
-            label = await conn.fetchrow(
-                """SELECT l.label_id, l.kind, p.display_name, p.name
-                     FROM shelf_labels l
-                     JOIN products p ON p.product_id = l.product_id
-                    WHERE l.product_id = $1""",
-                product_id,
-            )
-            push_id = None
-            if label is not None:
-                line1, line2 = render_lines(
-                    label["display_name"] or label["name"], price, reason_tag
-                )
-                push_id = await conn.fetchval(
-                    """INSERT INTO label_pushes
-                           (label_id, product_id, decision_id, price, line1, line2,
-                            result, published_at)
-                       VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
-                       RETURNING id""",
-                    label["label_id"],
-                    product_id,
-                    decision_id,
-                    price,
-                    line1,
-                    line2,
-                    now,
-                )
-                await conn.execute(
-                    """UPDATE shelf_labels SET status = 'syncing' WHERE label_id = $1""",
-                    label["label_id"],
-                )
-
-    payload = {
-        "product_id": product_id,
-        "price": money_num(price),
-        "currency": "USD",
-        "decision_id": decision_id,
-        "reason_tag": reason_tag,
-        "approval": approval,
-        "approved_by": approved_by,
-        "agent_version": agent_version,
-        "ts": now.isoformat().replace("+00:00", "Z"),
-    }
-    delivered = await bus.publish(
-        f"retail/price/{product_id}", payload, qos=1, retain=True
-    )
-
-    if not delivered and push_id is not None:
-        # Be honest in the UI: the price is approved and recorded, but it has
-        # not left the building.
-        log.info("price for %s is queued, not published", product_id)
-
-    bus.emit(
-        "price",
-        product_id=product_id,
-        price=str(price),
-        approval=approval,
-        approved_by=approved_by,
-        decision_id=decision_id,
-        delivered=delivered,
-    )
-
-    return {
-        "history_id": history_id,
-        "published": delivered,
-        "queued": bus.queued_count(),
-        "label_push_id": push_id,
-    }
+            result=await record(conn)
+    bus.emit('price',product_id=product_id,price=str(price),delivered=False)
+    return result
 
 
 async def publish_guardrail(

@@ -82,10 +82,44 @@ tap: ## Print every message on the retail/ topic tree
 fake: ## Follow the fake publisher's output (it runs by itself under `make demo`)
 	$(COMPOSE_ALL) logs -f fake-publisher
 
-validate: ## Check the JSON Schemas themselves are well-formed
-	@for f in contracts/*.schema.json; do \
-		python3 -c "import json,sys; json.load(open('$$f'))" && echo "ok   $$f" || echo "FAIL $$f"; \
-	done
+validate: ## Validate schemas and example payloads
+	$(PYTHON) tools/validate_contracts.py
 
 smoke: ## End-to-end check: publish a price, assert it lands downstream
-	uv run tools/smoke.py
+	$(PYTHON) tools/smoke.py
+
+PYTHON ?= .venv/bin/python
+SOFTWARE := $(BASE) -f infra/docker-compose.software.yml
+
+software: env ## Start simulator, forecasting, pricing, console and device emulator
+	$(SOFTWARE) up -d --build --remove-orphans
+
+software-down: env ## Stop the complete software stack and preserve its data
+	$(SOFTWARE) down
+
+software-logs: env ## Follow complete software stack logs
+	$(SOFTWARE) logs -f
+
+test: ## Run unit tests (database tests run when TEST_DATABASE_URL is set)
+	$(PYTHON) -m pytest -q
+
+integration: ## Start isolated test infrastructure and run real database and MQTT tests
+	docker compose -f infra/docker-compose.verify.yml up -d --wait
+	TEST_DATABASE_URL=postgresql://retail:retail_test_only@localhost:15432/retail_pricing_test $(PYTHON) -m pytest -q
+
+train: ## Train DQN and DDPG and export held-out comparisons
+	$(PYTHON) -m retail train --algorithm dqn --output artifacts/dqn.zip
+	$(PYTHON) -m retail train --algorithm ddpg --output artifacts/ddpg.zip
+	$(PYTHON) -m retail evaluate --dqn artifacts/dqn.zip --ddpg artifacts/ddpg.zip
+
+forecast: ## Evaluate mean, seasonal, Prophet and LSTM forecasts
+	$(PYTHON) -m retail forecast --methods mean,seasonal,prophet,lstm
+
+secure-identities: ## Create a private local CA and role-specific MQTT certificates
+	$(PYTHON) tools/setup_tls.py
+
+software-secure: env ## Start complete software with MQTT mTLS and role ACLs
+	$(SOFTWARE) -f infra/docker-compose.secure.yml up -d --build --remove-orphans
+
+smoke-secure: ## Verify authenticated approval and render over mutual TLS
+	MQTT_PORT=8883 MQTT_TLS=true MQTT_CA_FILE=secrets/certs/ca.pem MQTT_CERT_FILE=secrets/certs/pricing.pem MQTT_KEY_FILE=secrets/certs/pricing.key $(PYTHON) tools/smoke.py
