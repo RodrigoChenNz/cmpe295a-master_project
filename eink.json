@@ -1,0 +1,207 @@
+{
+  "environment": {
+    "when": "2026-10-31T04:03:17.630894Z",
+    "host": "macOS-15.8.1-arm64-arm-64bit",
+    "cpu": "Apple M1 Pro",
+    "docker": "29.8.2 cpus=10 mem=8319504384",
+    "commit": "f9d12f2"
+  },
+  "eink": {
+    "label": "SHLF-0225",
+    "product": "SKU-019",
+    "runs": [
+      {
+        "run": 1,
+        "price": "299.20",
+        "rest_ms": 26.0,
+        "to_broker_ms": 23.2,
+        "to_first_checkin_ms": null,
+        "to_confirmed_ms": null,
+        "rssi_dbm": null
+      },
+      {
+        "run": 2,
+        "price": "299.10",
+        "rest_ms": 45.9,
+        "to_broker_ms": 46.1,
+        "to_first_checkin_ms": null,
+        "to_confirmed_ms": null,
+        "rssi_dbm": null
+      },
+      {
+        "run": 3,
+        "price": "299.20",
+        "rest_ms": 53.2,
+        "to_broker_ms": 52.8,
+        "to_first_checkin_ms": null,
+        "to_confirmed_ms": null,
+        "rssi_dbm": null
+      },
+      {
+        "run": 4,
+        "price": "299.10",
+        "rest_ms": 63.5,
+        "to_broker_ms": 61.4,
+        "to_first_checkin_ms": null,
+        "to_confirmed_ms": null,
+        "rssi_dbm": null
+      },
+      {
+        "run": 5,
+        "price": "299.20",
+        "rest_ms": 39.5,
+        "to_broker_ms": 37.9,
+        "to_first_checkin_ms": null,
+        "to_confirmed_ms": null,
+        "rssi_dbm": null
+      },
+      {
+        "run": 6,
+        "price": "299.10",
+        "rest_ms": 21.5,
+        "to_broker_ms": 21.2,
+        "to_first_checkin_ms": null,
+        "to_confirmed_ms": null,
+        "rssi_dbm": null
+      },
+      {
+        "run": 7,
+        "price": "299.20",
+        "rest_ms": 44.1,
+        "to_broker_ms": 41.1,
+        "to_first_checkin_ms": null,
+        "to_confirmed_ms": null,
+        "rssi_dbm": null
+      },
+      {
+        "run": 8,
+        "price": "299.10",
+        "rest_ms": 50.3,
+        "to_broker_ms": 46.6,
+        "to_first_checkin_ms": null,
+        "to_confirmed_ms": null,
+        "rssi_dbm": null
+      },
+      {
+        "run": 9,
+        "price": "299.20",
+        "rest_ms": 23.2,
+        "to_broker_ms": 17.4,
+        "to_first_checkin_ms": null,
+        "to_confirmed_ms": null,
+        "rssi_dbm": null
+      },
+      {
+        "run": 10,
+        "price": "299.10",
+        "rest_ms": 52.8,
+        "to_broker_ms": 50.3,
+        "to_first_checkin_ms": 63052.5,
+        "to_confirmed_ms": 65042.8,
+        "rssi_dbm": -119
+      },
+      {
+        "run": 11,
+        "price": "299.20",
+        "rest_ms": 20.1,
+        "to_broker_ms": 18.6,
+        "to_first_checkin_ms": 77352.0,
+        "to_confirmed_ms": 85204.4,
+        "rssi_dbm": -118
+      },
+      {
+        "run": 12,
+        "price": "299.10",
+        "rest_ms": 47.3,
+        "to_broker_ms": 45.3,
+        "to_first_checkin_ms": 814.9,
+        "to_confirmed_ms": 2814.9,
+        "rssi_dbm": -106
+      },
+      {
+        "run": 13,
+        "price": "299.20",
+        "rest_ms": 24.8,
+        "to_broker_ms": 21.5,
+        "to_first_checkin_ms": 796.2,
+        "to_confirmed_ms": 2798.1,
+        "rssi_dbm": -58
+      },
+      {
+        "run": 14,
+        "price": "299.10",
+        "rest_ms": 28.6,
+        "to_broker_ms": 26.1,
+        "to_first_checkin_ms": 796.5,
+        "to_confirmed_ms": 2791.1,
+        "rssi_dbm": -62
+      },
+      {
+        "run": 15,
+        "price": "299.20",
+        "rest_ms": 41.9,
+        "to_broker_ms": 40.2,
+        "to_first_checkin_ms": 812.6,
+        "to_confirmed_ms": 2810.6,
+        "rssi_dbm": -67
+      },
+      {
+        "run": 16,
+        "price": "299.10",
+        "rest_ms": 31.7,
+        "to_broker_ms": 28.8,
+        "to_first_checkin_ms": 803.6,
+        "to_confirmed_ms": 5323.3,
+        "rssi_dbm": -58
+      },
+      {
+        "run": 17,
+        "price": "299.20",
+        "rest_ms": 30.9,
+        "to_broker_ms": 27.0,
+        "to_first_checkin_ms": 798.8,
+        "to_confirmed_ms": 2796.0,
+        "rssi_dbm": -68
+      },
+      {
+        "run": 18,
+        "price": "299.10",
+        "rest_ms": 27.4,
+        "to_broker_ms": 25.6,
+        "to_first_checkin_ms": 800.8,
+        "to_confirmed_ms": 2792.6,
+        "rssi_dbm": -66
+      },
+      {
+        "run": 19,
+        "price": "299.20",
+        "rest_ms": 18.5,
+        "to_broker_ms": 17.2,
+        "to_first_checkin_ms": 789.8,
+        "to_confirmed_ms": 2784.0,
+        "rssi_dbm": -69
+      },
+      {
+        "run": 20,
+        "price": "299.10",
+        "rest_ms": 10.7,
+        "to_broker_ms": 9.7,
+        "to_first_checkin_ms": 780.8,
+        "to_confirmed_ms": 2776.0,
+        "rssi_dbm": -68
+      }
+    ],
+    "to_confirmed": {
+      "n": 11,
+      "mean": 16175.8,
+      "std": 29500.83,
+      "min": 2776.0,
+      "p50": 2798.1,
+      "p90": 65042.8,
+      "p95": 75123.6,
+      "p99": 83188.24,
+      "max": 85204.4
+    },
+    "missed": 9
+  }
+}
