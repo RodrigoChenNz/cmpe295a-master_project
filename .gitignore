@@ -51,3 +51,5 @@ edge/msp432/Release/
 *.map
 
 edge/**/config.py
+edge/**/include/config.h
+edge/**/.pio/

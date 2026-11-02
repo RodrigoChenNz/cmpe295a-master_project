@@ -19,7 +19,7 @@ endif
 COMPOSE_ALL := $(BASE) $(DEMO_FILE)
 
 .DEFAULT_GOAL := help
-.PHONY: help up demo fresh fresh-demo down restart logs ps nuke psql tap smoke fake validate seed env
+.PHONY: help up demo fresh fresh-demo down restart logs ps nuke psql tap smoke fake validate seed env lora reset-labels
 
 help: ## Show this help
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -81,6 +81,23 @@ tap: ## Print every message on the retail/ topic tree
 
 fake: ## Follow the fake publisher's output (it runs by itself under `make demo`)
 	$(COMPOSE_ALL) logs -f fake-publisher
+
+# On the host, not in compose: Docker Desktop on macOS cannot pass a USB serial
+# device into a container. See edge/lora-gateway/README.md.
+lora: ## Link the LoRa gateway (USB) to the broker, for the e-ink labels
+	uv run --with aiomqtt --with pyserial tools/lora_bridge.py
+
+# Unlinks every tag in the database and deletes every retained assignment on the
+# broker. Labels, products and prices stay. With `make lora` running, each tag
+# shows "Not set up" within seconds; otherwise at its next check-in after the
+# bridge starts. Then set them up again with Shelf labels > Add labels.
+reset-labels: ## Send every e-ink tag back to "Not set up" (labels and prices stay)
+	@$(COMPOSE_ALL) exec -T postgres psql -U retail -d retail_pricing -qc \
+		"UPDATE shelf_labels SET device_id = NULL WHERE device_id IS NOT NULL"
+	@for t in $$($(COMPOSE_ALL) exec -T mosquitto mosquitto_sub -t 'retail/label/+/config' -W 1 -F '%t' 2>/dev/null); do \
+		$(COMPOSE_ALL) exec -T mosquitto mosquitto_pub -r -n -t "$$t" && echo "cleared $$t"; \
+	done
+	@echo "Every tag goes back to \"Not set up\" at its next check-in while make lora runs."
 
 validate: ## Check the JSON Schemas themselves are well-formed
 	@for f in contracts/*.schema.json; do \

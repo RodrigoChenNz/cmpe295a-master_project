@@ -34,6 +34,7 @@ This is what makes the explanation load-bearing rather than decorative: the mana
 | `retail/price/{product_id}` | [PriceUpdate](price.schema.json) | **dashboard-api only** | edge gateway, pricing-agent | 1 | yes |
 | `retail/inventory/{product_id}` | [InventoryRisk](inventory.schema.json) | forecaster | dashboard-api, pricing-agent | 0 | yes |
 | `retail/guardrail/{product_id}` | [PricingPolicy](guardrail.schema.json) | dashboard-api | pricing-agent | 1 | yes |
+| `retail/shelf/{label_id}` | [ShelfReport](shelf.schema.json) **draft** | edge (Layer 2) | dashboard-api | 1 | no |
 
 `{product_id}` in the topic must equal `product_id` in the payload. Subscribe with
 `retail/price/+` for all SKUs.
@@ -138,6 +139,8 @@ prices directly. Every row below needs the team's sign-off together, not one at 
 | `guardrail` | **breaking — needs all four** | Promoted from a clamp to the automation policy. Adds `auto_approve_pct`. No longer optional to the design. |
 | `explain` | agreed | Now explains a *proposal*, not a live price. Shape unchanged. |
 | `inventory` | agreed | — |
+| `price` (reason_tag) | **widened: mention at standup** | `reason_tag` may now be empty (`minLength` 1 → 0), for a manager-set price with no reason; the label shows the price alone. Backward-compatible for anything that renders the string, but a consumer that rejected empty strings must stop. |
+| `shelf` | **new, draft: needs all four** | What a label's glass shows, and its signal, battery and firmware, reported by the edge at every check-in. Lets the console confirm a push and show real label health. See the "Label reports and pairing" proposal. |
 
 What each owner needs to know:
 

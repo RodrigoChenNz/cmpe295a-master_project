@@ -29,9 +29,9 @@
     },
     "reason_tag": {
       "type": "string",
-      "minLength": 1,
+      "minLength": 0,
       "maxLength": 16,
-      "description": "Rendered verbatim on LCD line 2 of a 16x2 character display, so the 16 character limit is a hardware constraint, not a style preference. On an override this describes the manager's reason, not the agent's."
+      "description": "Rendered verbatim on LCD line 2 of a 16x2 character display, so the 16 character limit is a hardware constraint, not a style preference. On an override this describes the manager's reason, not the agent's. May be empty (\"\") when a manager sets a price and gives no reason: the label then shows the price alone."
     },
     "approval": {
       "type": "string",

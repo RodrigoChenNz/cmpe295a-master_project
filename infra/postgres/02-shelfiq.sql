@@ -173,6 +173,10 @@ CREATE TABLE shelf_labels (
     battery_pct  SMALLINT CHECK (battery_pct BETWEEN 0 AND 100),
     firmware     TEXT,
     paired_at    TIMESTAMPTZ,
+    -- The hardware behind the label: its radio's factory address, 12 hex
+    -- digits. NULL for a label row with no device yet (the demo seed's, or
+    -- one whose tag was removed). A device is one label at most.
+    device_id    TEXT UNIQUE CHECK (device_id ~ '^[0-9A-F]{12}$'),
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -214,6 +218,9 @@ CREATE TABLE label_events (
     event_type TEXT NOT NULL CHECK (event_type IN (
                    'connected', 'disconnected', 'paired', 'unpaired',
                    'firmware_updated', 'battery_low',
+                   -- A tag adopted from "Add labels" into this label, or
+                   -- removed from it (it goes back to "Not set up").
+                   'device_added', 'device_removed',
                    -- A manager asked the device to identify itself. Recorded so
                    -- the console's one un-acknowledged command still has a trace.
                    'blink_requested',
@@ -226,6 +233,20 @@ CREATE TABLE label_events (
 );
 
 CREATE INDEX label_events_label_ts_idx ON label_events (label_id, ts DESC);
+
+-- Tags heard while "Add labels" is open that are not set up yet: what the
+-- console lists to choose from. Written from retail/label/discovered. A row
+-- goes when its device is adopted into a label.
+CREATE TABLE label_discoveries (
+    device_id    TEXT PRIMARY KEY CHECK (device_id ~ '^[0-9A-F]{12}$'),
+    rssi_dbm     SMALLINT CHECK (rssi_dbm BETWEEN -120 AND 0),
+    battery_pct  SMALLINT CHECK (battery_pct BETWEEN 0 AND 100),
+    firmware     TEXT,
+    -- Its button was pressed: "this is the one in my hand".
+    button_at    TIMESTAMPTZ,
+    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. People — because the audit log is only worth anything with a name on it
@@ -344,12 +365,17 @@ CREATE TABLE store_settings (
     mqtt_host      TEXT NOT NULL DEFAULT 'localhost',
     mqtt_port      INTEGER NOT NULL DEFAULT 1883 CHECK (mqtt_port BETWEEN 1 AND 65535),
     mqtt_tls       BOOLEAN NOT NULL DEFAULT FALSE,
-    -- Seconds without a sighting before a label is shown as offline.
-    label_stale_secs INTEGER NOT NULL DEFAULT 900 CHECK (label_stale_secs > 0),
+    -- Seconds without a sighting before a label is shown as offline. E-ink
+    -- labels check in every 30 minutes (edge/eink-e213, WAKE_SECS), so 75
+    -- minutes forgives one missed check-in.
+    label_stale_secs INTEGER NOT NULL DEFAULT 4500 CHECK (label_stale_secs > 0),
     -- Set once, when the super admin finishes the store setup wizard. Until
     -- then the console shows the wizard instead of the Dashboard.
     onboarded_at   TIMESTAMPTZ,
     onboarded_by   TEXT REFERENCES users(username),
+    -- Shelf labels > Add labels: until when tags that aren't set up are
+    -- listed. NULL or past: closed.
+    label_pairing_until TIMESTAMPTZ,
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

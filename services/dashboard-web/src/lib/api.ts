@@ -7,7 +7,7 @@
 
 import type {
   ActivityRow, ApproveResult, InviteInfo, InviteIssued, LocationLevel, BlinkResult, CategoryRule, DashboardData, Facets,
-  Label, LabelDetail, LocationImpact, LocationTree, Meta, MqttTestResult,
+  Label, LabelDetail, LocationImpact, LocationTree, Meta, MqttTestResult, PairingState,
   NewProductBody, Page, Product, ProductDetail, StockHealth, PriceReview,
   RulesPreview, RulesResponse, SavedView, SettingsResponse, Store, StoreBrand, StoreCategory, Suggestion,
   SuggestionDetail, User, UserRow,
@@ -217,6 +217,17 @@ export const api = {
 
   blinkLabel: (id: string, seconds = 3) =>
     post<BlinkResult>(`/api/labels/${id}/blink`, { seconds }),
+  pairing: () => request<PairingState>('/api/labels/pairing'),
+  openPairing: (minutes = 10) => post<PairingState>('/api/labels/pairing', { minutes }),
+  closePairing: () => del<PairingState>('/api/labels/pairing'),
+  /** `label_id` takes over that (tagless) label; omit it for a new one. */
+  adoptTag: (body: {
+    device_id: string;
+    label_id?: string;
+    product_id?: string;
+    slot_code?: string | null;
+  }) => post<LabelDetail & { warning?: string }>('/api/labels/adopt', body),
+  removeDevice: (id: string) => post<LabelDetail>(`/api/labels/${id}/remove-device`),
   resendLabels: (ids: string[]) =>
     post<{ sent: string[]; skipped: { label_id: string; reason: string }[]; count: number }>(
       '/api/labels/resend',

@@ -10,6 +10,7 @@ displaying a stale price from flash while this table says 'online'. Hence
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -177,6 +178,213 @@ async def list_labels(
         network = {k: v for k, v in network.items() if k not in ("host", "port", "tls")}
     out["network"] = network
     return out
+
+
+# ─── Add labels: finding new tags, and adopting them ───────────────────────
+#
+# A tag out of the box knows only its device ID. "Add labels" opens a window
+# during which the gateway rings every tag not yet set up, and the ones that
+# answer are listed here. Pressing a tag's button marks it as the one in the
+# person's hand; adopting it makes it a label (a new one, or an existing label
+# with no device, such as one whose tag broke) and sends it its assignment.
+#
+# These routes sit above `/{label_id}` so that "pairing" and "adopt" are never
+# read as label IDs.
+
+
+class PairingBody(BaseModel):
+    minutes: int = Field(default=10, ge=1, le=60)
+
+
+async def _pairing_state() -> dict:
+    until = await db.fetchval("SELECT label_pairing_until FROM store_settings LIMIT 1")
+    is_open = bool(until and until > datetime.now(timezone.utc))
+    found = await db.fetch(
+        """SELECT d.* FROM label_discoveries d
+            WHERE NOT EXISTS (SELECT 1 FROM shelf_labels l WHERE l.device_id = d.device_id)
+            ORDER BY d.button_at DESC NULLS LAST, d.rssi_dbm DESC NULLS LAST"""
+    )
+    # Labels a tag can take over: e-ink labels with no device behind them.
+    deviceless = await db.fetch(
+        """SELECT l.label_id, l.product_id, p.name AS product_name, l.slot_code
+             FROM shelf_labels l
+             LEFT JOIN products p ON p.product_id = l.product_id
+            WHERE l.device_id IS NULL AND l.kind = 'eink'
+            ORDER BY l.label_id"""
+    )
+    return {
+        "open": is_open,
+        "open_until": serialize.value("open_until", until) if is_open else None,
+        "found": serialize.rows(found),
+        "deviceless": serialize.rows(deviceless),
+    }
+
+
+@router.get("/pairing")
+async def pairing_state(
+    _user: Annotated[auth.CurrentUser, Depends(auth.current_user)],
+) -> dict:
+    return await _pairing_state()
+
+
+@router.post("/pairing")
+async def open_pairing(
+    body: PairingBody,
+    user: Annotated[auth.CurrentUser, Depends(auth.require_editor)],
+) -> dict:
+    """Open "Add labels" for `minutes`, and ring every tag not set up."""
+    until = datetime.now(timezone.utc) + timedelta(minutes=body.minutes)
+    await db.execute("UPDATE store_settings SET label_pairing_until = $1", until)
+    # A fresh list each time: tags found in an earlier window may since have
+    # been carried to another store, or adopted somewhere else.
+    await db.execute(
+        """DELETE FROM label_discoveries d
+            WHERE NOT EXISTS (SELECT 1 FROM shelf_labels l WHERE l.device_id = d.device_id)"""
+    )
+    await gate.publish_label_pairing(until, user.username)
+    bus.emit("pairing", open=True)
+    return await _pairing_state()
+
+
+@router.delete("/pairing")
+async def close_pairing(
+    user: Annotated[auth.CurrentUser, Depends(auth.require_editor)],
+) -> dict:
+    await db.execute("UPDATE store_settings SET label_pairing_until = NULL")
+    await gate.publish_label_pairing(None, user.username)
+    bus.emit("pairing", open=False)
+    return await _pairing_state()
+
+
+class AdoptBody(BaseModel):
+    device_id: str = Field(pattern=r"^[0-9A-Fa-f]{12}$")
+    # Take over this existing label (it must have no device). Omit for a new one.
+    label_id: str | None = Field(default=None, pattern=r"^SHLF-[0-9]{3,}$")
+    product_id: str | None = Field(default=None, pattern=r"^SKU-[0-9]{3,}$")
+    slot_code: str | None = Field(default=None, max_length=40)
+
+
+async def _next_label_id() -> str:
+    n = await db.fetchval(
+        """SELECT COALESCE(MAX(substring(label_id FROM 6)::int), 0) + 1
+             FROM shelf_labels"""
+    )
+    return f"SHLF-{n:04d}"
+
+
+@router.post("/adopt", status_code=status.HTTP_201_CREATED)
+async def adopt(
+    body: AdoptBody,
+    user: Annotated[auth.CurrentUser, Depends(auth.require_editor)],
+) -> dict:
+    """Make a found tag a label, and send it its assignment.
+
+    With `label_id`, the tag takes over that label, keeping its product,
+    position and history; a product or position given here then moves it, as
+    pairing would. Without, it becomes the next new label.
+    """
+    device = body.device_id.upper()
+    already = await db.fetchval(
+        "SELECT label_id FROM shelf_labels WHERE device_id = $1", device
+    )
+    if already:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"That tag is already {already}. Remove its device there first.",
+        )
+
+    if body.label_id:
+        row = await db.fetchrow(
+            "SELECT device_id FROM shelf_labels WHERE label_id = $1", body.label_id
+        )
+        if row is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No such label.")
+        if row["device_id"]:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"{body.label_id} already has a tag. Remove its device first.",
+            )
+        label_id = body.label_id
+        await db.execute(
+            "UPDATE shelf_labels SET device_id = $2, kind = 'eink' WHERE label_id = $1",
+            label_id, device,
+        )
+        created = False
+    else:
+        for _attempt in range(3):
+            label_id = await _next_label_id()
+            try:
+                await db.execute(
+                    """INSERT INTO shelf_labels (label_id, kind, device_id, status)
+                       VALUES ($1, 'eink', $2, 'unassigned')""",
+                    label_id, device,
+                )
+                break
+            except Exception as exc:  # noqa: BLE001
+                # Two people adopting at once took the same number: try the next.
+                if db.unique_constraint(exc) != "shelf_labels_pkey":
+                    raise
+        else:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Could not pick a label ID. Try again.")
+        created = True
+
+    await db.execute(
+        """INSERT INTO label_events (label_id, event_type, detail)
+           VALUES ($1, 'device_added', $2)""",
+        label_id, {"device_id": device, "by": user.username},
+    )
+
+    detail = None
+    if body.product_id or "slot_code" in body.model_fields_set:
+        fields = {"product_id": body.product_id}
+        if "slot_code" in body.model_fields_set:
+            fields["slot_code"] = body.slot_code   # given, even as null: pair() moves it
+        pair_body = PairBody(**fields)
+        try:
+            # Validates the product and position, publishes the price, and
+            # sends the config with them.
+            detail = await pair(label_id, pair_body, user)
+        except HTTPException:
+            # A new label that can't take that product or position isn't
+            # half-made: undo it, so the tag stays in the found list.
+            if created:
+                await db.execute("DELETE FROM shelf_labels WHERE label_id = $1", label_id)
+            else:
+                await db.execute(
+                    "UPDATE shelf_labels SET device_id = NULL WHERE label_id = $1", label_id
+                )
+            raise
+    else:
+        await gate.publish_label_config(label_id)
+
+    await db.execute("DELETE FROM label_discoveries WHERE device_id = $1", device)
+    bus.emit("labels", changed=[label_id], action="adopted")
+    bus.emit("pairing", adopted=device, label_id=label_id)
+    return detail or await get_label(label_id, user)
+
+
+@router.post("/{label_id}/remove-device")
+async def remove_device(
+    label_id: str,
+    user: Annotated[auth.CurrentUser, Depends(auth.require_editor)],
+) -> dict:
+    """Take the tag away from this label. The tag goes back to "Not set up";
+    the label stays, with its product, position and history, ready for
+    another tag."""
+    device = await db.fetchval(
+        "SELECT device_id FROM shelf_labels WHERE label_id = $1", label_id
+    )
+    if device is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{label_id} has no tag to remove.")
+    await db.execute("UPDATE shelf_labels SET device_id = NULL WHERE label_id = $1", label_id)
+    await db.execute(
+        """INSERT INTO label_events (label_id, event_type, detail)
+           VALUES ($1, 'device_removed', $2)""",
+        label_id, {"device_id": device, "by": user.username},
+    )
+    await gate.clear_label_config(label_id)
+    bus.emit("labels", changed=[label_id], action="device_removed")
+    return await get_label(label_id, user)
 
 
 @router.get("/{label_id}")
@@ -358,6 +566,8 @@ async def pair(
         {"product_id": body.product_id, "by": user.username},
     )
     bus.emit("labels", changed=[label_id], action="paired")
+    # A label with a tag behind it learns its new product (and name) now.
+    await gate.publish_label_config(label_id)
 
     # Pushing the current price right after pairing, so a freshly paired label
     # does not sit showing whatever it had in flash.

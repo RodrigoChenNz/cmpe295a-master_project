@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sjsu.edu/cmpe295/contracts/shelf.schema.json",
+  "title": "ShelfReport",
+  "description": "DRAFT, needs all four signatures. What a shelf label shows, and how it is. Published to retail/shelf/{label_id} by the edge (Layer 2) each time a label checks in. QoS 1, not retained: a retained sighting would replay to a reconnecting dashboard as if the label had just been seen. Subscribed to by dashboard-api, which keeps the history.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["label_id", "in_sync", "ts"],
+  "properties": {
+    "label_id": {
+      "type": "string",
+      "pattern": "^SHLF-[0-9]{3,}$",
+      "description": "Must equal the {label_id} segment of the topic it is published on."
+    },
+    "product_id": {
+      "type": ["string", "null"],
+      "pattern": "^SKU-[0-9]{3,}$",
+      "description": "The product the label is assigned to, or null if none."
+    },
+    "price": {
+      "type": ["number", "null"],
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01,
+      "description": "The price on the glass, or null if it shows none or the edge cannot tell which. Two decimal places. Consumers must parse as decimal, never float."
+    },
+    "decision_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "The decision behind the price on the glass, from the PriceUpdate the edge delivered. Null for a manager-set price with no proposal, or when the edge does not know it."
+    },
+    "in_sync": {
+      "type": "boolean",
+      "description": "The glass shows the current retained retail/price/{product_id}."
+    },
+    "rendered_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "UTC ISO-8601. The first check-in at which the label reported showing this price. Accurate to the check-in interval: a sleeping label cannot report sooner."
+    },
+    "rssi_dbm": {
+      "type": ["integer", "null"],
+      "minimum": -120,
+      "maximum": 0,
+      "description": "How strongly the edge heard the label."
+    },
+    "battery_pct": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Estimated from battery voltage on a LiPo curve, so about plus or minus 10. Null when unknown, for example while the label runs on USB."
+    },
+    "firmware": {
+      "type": ["string", "null"],
+      "description": "The label firmware, e.g. \"e213-4\"."
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO-8601. When the edge heard this check-in."
+    }
+  },
+  "examples": [
+    {
+      "label_id": "SHLF-0108",
+      "product_id": "SKU-002",
+      "price": 4.12,
+      "decision_id": null,
+      "in_sync": true,
+      "rendered_at": "2026-10-29T23:04:12Z",
+      "rssi_dbm": -47,
+      "battery_pct": 70,
+      "firmware": "e213-4",
+      "ts": "2026-10-29T23:04:40Z"
+    }
+  ]
+}

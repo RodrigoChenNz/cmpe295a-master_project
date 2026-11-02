@@ -310,6 +310,60 @@ async def publish_label_command(
     return delivered
 
 
+async def publish_label_config(label_id: str) -> bool:
+    """Tell the edge which device this label is, and its product.
+
+    `retail/label/{label_id}/config`, retained, so a gateway that reboots
+    relearns every assignment from its bridge. **Not a contract topic**: like
+    blink, only the console and the edge read it. Does nothing for a label
+    with no device; `clear_label_config` is the way to take one away.
+    """
+    row = await db.fetchrow(
+        """SELECT l.device_id, l.product_id, p.name
+             FROM shelf_labels l
+             LEFT JOIN products p ON p.product_id = l.product_id
+            WHERE l.label_id = $1""",
+        label_id,
+    )
+    if row is None or row["device_id"] is None:
+        return False
+    now = datetime.now(timezone.utc)
+    return await bus.publish(
+        f"retail/label/{label_id}/config",
+        {
+            "label_id": label_id,
+            "device_id": row["device_id"],
+            "product_id": row["product_id"],
+            "display_name": row["name"],
+            "ts": now.isoformat().replace("+00:00", "Z"),
+        },
+        qos=1,
+        retain=True,
+    )
+
+
+async def clear_label_config(label_id: str) -> bool:
+    """Delete the retained config: the device goes back to "Not set up"."""
+    return await bus.publish(f"retail/label/{label_id}/config", None, qos=1, retain=True)
+
+
+async def publish_label_pairing(open_until: datetime | None, requested_by: str) -> bool:
+    """Open or close "Add labels". Retained, so a gateway that reboots inside
+    the window still knows; the bridge rings only for a window in the future."""
+    now = datetime.now(timezone.utc)
+    until = open_until or now
+    return await bus.publish(
+        "retail/label/pairing",
+        {
+            "open_until": until.isoformat().replace("+00:00", "Z"),
+            "requested_by": requested_by,
+            "ts": now.isoformat().replace("+00:00", "Z"),
+        },
+        qos=1,
+        retain=True,
+    )
+
+
 # ─── shelf rendering ────────────────────────────────────────────────────────
 
 

@@ -332,6 +332,29 @@ export interface Label {
   last_price?: string | null;
   as_published_at?: string | null;
   last_push_result?: 'pending' | 'confirmed' | 'failed' | null;
+  /** The tag behind the label: its radio's factory address, 12 hex digits.
+   *  Null for a label with no tag (the demo seed's, or one whose tag was removed). */
+  device_id?: string | null;
+}
+
+/** A tag heard while "Add labels" is open that isn't set up yet. */
+export interface FoundTag {
+  device_id: string;
+  rssi_dbm: number | null;
+  battery_pct: number | null;
+  firmware: string | null;
+  /** Its button was pressed: the one in somebody's hand. */
+  button_at: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
+export interface PairingState {
+  open: boolean;
+  open_until: string | null;
+  found: FoundTag[];
+  /** E-ink labels with no tag, which a found tag can take over. */
+  deviceless: { label_id: string; product_id: string | null; product_name: string | null; slot_code: string | null }[];
 }
 
 /* ── Activity ─────────────────────────────────────────────────────────── */
@@ -437,7 +460,8 @@ export interface StreamEvent {
     | 'users'
     | 'locations'
     | 'categories'
-    | 'guardrail';
+    | 'guardrail'
+    | 'pairing';
   ts?: string;
   [key: string]: unknown;
 }

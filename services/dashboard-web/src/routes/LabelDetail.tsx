@@ -33,6 +33,8 @@ const EVENT_WORDS: Record<string, string> = {
   battery_low: 'Battery low',
   blink_requested: 'Identify requested',
   slot_cleared: 'Position removed',
+  device_added: 'Tag set up',
+  device_removed: 'Tag removed',
 };
 
 export function LabelDetail() {
@@ -44,6 +46,7 @@ export function LabelDetail() {
 
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmUnpair, setConfirmUnpair] = useState(false);
+  const [confirmRemoveTag, setConfirmRemoveTag] = useState(false);
   const [reassignTo, setReassignTo] = useState('');
   const [slotDraft, setSlotDraft] = useState<string | null>(null);
 
@@ -121,6 +124,14 @@ export function LabelDetail() {
       await api.pairLabel(label.label_id, { product_id: null });
       toast(`${label.label_id} unpaired. It keeps position ${label.slot_code ?? '—'}.`);
       setConfirmUnpair(false);
+      res.reload();
+    });
+
+  const removeTag = () =>
+    act('remove-tag', async () => {
+      await api.removeDevice(label.label_id);
+      toast(`The tag is no longer ${label.label_id}. It shows \u201cNot set up\u201d at its next check-in.`);
+      setConfirmRemoveTag(false);
       res.reload();
     });
 
@@ -279,7 +290,15 @@ export function LabelDetail() {
               )}
             </Cell>
             <Cell label="Writes today">{res.data.writes_today ?? 0}</Cell>
+            <Cell label="Tag">
+              <span className={s.mono}>{label.device_id ?? 'None'}</span>
+            </Cell>
           </div>
+          {canEdit && label.device_id && (
+            <Button size="toolbar" variant="ghost" onClick={() => setConfirmRemoveTag(true)}>
+              Remove tag
+            </Button>
+          )}
         </section>
 
         {canEdit && (
@@ -340,6 +359,28 @@ export function LabelDetail() {
           </section>
         )}
       </aside>
+
+      {confirmRemoveTag && (
+        <ConfirmModal
+          title={`Remove the tag from ${label.label_id}?`}
+          confirmLabel="Remove tag"
+          busy={busy === 'remove-tag'}
+          onConfirm={removeTag}
+          onClose={() => setConfirmRemoveTag(false)}
+          body={
+            <>
+              <p>
+                Tag <strong>{label.device_id}</strong> goes back to &ldquo;Not set up&rdquo; and
+                can be added again from Add labels.
+              </p>
+              <p>
+                {label.label_id} stays, with its product, position and history, ready for
+                another tag.
+              </p>
+            </>
+          }
+        />
+      )}
 
       {confirmUnpair && (
         <ConfirmModal

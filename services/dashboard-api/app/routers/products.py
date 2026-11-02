@@ -580,7 +580,8 @@ async def update_product(
 
 class PriceBody(BaseModel):
     price: Decimal = Field(gt=0, decimal_places=2)
-    reason_tag: str = Field(min_length=1, max_length=16)
+    # Optional: empty means the shelf shows the price alone.
+    reason_tag: str = Field(default="", max_length=16)
 
 
 @router.post("/{product_id}/price")
