@@ -28,12 +28,13 @@ async def status(_user: Annotated[auth.CurrentUser, Depends(auth.current_user)])
     recent = await db.fetchrow("""SELECT
         (SELECT max(received_at) FROM store_observations) AS observations,
         (SELECT max(ts) FROM inventory_risk WHERE model_version NOT LIKE '%stub%') AS forecasting,
-        (SELECT max(ts) FROM proposals WHERE agent_version NOT LIKE 'stub%'
-            AND agent_version NOT LIKE 'smoke%') AS pricing,
+        greatest((SELECT max(ts) FROM proposals WHERE agent_version NOT LIKE 'stub%'
+            AND agent_version NOT LIKE 'smoke%'),(SELECT last_seen FROM worker_heartbeats WHERE role='pricing')) AS pricing,
         (SELECT max(last_seen_at) FROM shelf_labels
             WHERE emulated OR rendered_at IS NOT NULL) AS receiver""")
-    latest = await db.fetchrow("""SELECT agent_version,ts FROM proposals
-        WHERE agent_version NOT LIKE 'stub%' AND agent_version NOT LIKE 'smoke%'
+    latest = await db.fetchrow("""SELECT * FROM (
+        SELECT agent_version,ts FROM proposals WHERE agent_version NOT LIKE 'stub%' AND agent_version NOT LIKE 'smoke%'
+        UNION ALL SELECT model_version AS agent_version,last_seen AS ts FROM worker_heartbeats WHERE role='pricing') m
         ORDER BY ts DESC LIMIT 1""")
     checked = datetime.now(timezone.utc)
     pipeline = []

@@ -23,6 +23,8 @@ import { SignIn } from './routes/SignIn';
 import { Setup } from './routes/Setup';
 import { Onboarding, SetupPending } from './routes/Onboarding';
 import { Join } from './routes/Join';
+import { Commerce } from './routes/Commerce';
+import { Storefront } from './routes/Storefront';
 import { System } from './routes/System';
 import { Dashboard } from './routes/Dashboard';
 import { Suggestions } from './routes/Suggestions';
@@ -51,6 +53,10 @@ function joinToken(): string | null {
 }
 
 export function App() {
+  return window.location.pathname.startsWith('/shop') ? <Storefront /> : <ConsoleApp />;
+}
+
+function ConsoleApp() {
   const [session, setSession] = useState<Session>({ state: 'checking' });
   const [brand, setBrand] = useState<StoreBrand | null>(null);
 
@@ -163,6 +169,7 @@ export function App() {
       <AppShell user={session.user} onSignedOut={signedOut}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/commerce/:section" element={<Commerce />} />
           <Route path="/system" element={<System />} />
 
           <Route path="/suggestions" element={<Suggestions />} />

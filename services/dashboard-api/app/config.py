@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     shelfiq_bootstrap_name: str = ""
     shelfiq_bootstrap_password: str = ""
 
+    commerce_agent_key: str = ""
+    commerce_webhook_key: str = ""
+    commerce_webhook_url: str = ""
+
     cors_origins: str = "http://localhost:5173"
 
     @property

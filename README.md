@@ -148,3 +148,8 @@ let them lapse.
 - [Workbook (295A)](docs/workbook_assignment_1.md) — literature review, architecture, schedule
 - [Meeting notes](docs/meetings/)
 - [Agent prompts](docs/prompts/) — self-contained briefs for building each layer
+
+
+## Local commerce demonstration
+
+The feature branch includes a test storefront, unified approvals, nightly model jobs, orders and negotiation, simulated supplier procurement, inventory and accounting ledgers, and signed order notifications. See [the commerce runbook](docs/COMMERCE.md) for startup, acceptance commands and the explicit development UCP boundary. Main and the shared report remain unchanged.

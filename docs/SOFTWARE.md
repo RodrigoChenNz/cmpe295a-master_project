@@ -200,3 +200,8 @@ include an optional publication sequence and display name for upgraded devices.
 Legacy devices that omit acknowledgements cannot be counted as confirmed.
 The proposals/explanations now explicitly allow the metadata the console uses.
 Review these changes as a group before integration into shared branches.
+
+
+## Commerce extension
+
+See [COMMERCE.md](COMMERCE.md) for the test storefront, nightly review, owner decisions, orders, supplier simulator, inventory ledger, accounting and signed notifications. Run `make commerce-keys`, restart the secure stack, then `make commerce-ready`. The original `make ready` remains the independent price-to-render acceptance check.

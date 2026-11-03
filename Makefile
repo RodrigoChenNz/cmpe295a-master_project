@@ -126,3 +126,11 @@ smoke-secure: ## Verify authenticated approval and render over mutual TLS
 
 ready: ## Verify fresh pipeline activity and a complete approved render round trip
 	$(PYTHON) tools/ready.py
+
+commerce-ready: ## Run test checkout, negotiation, fulfillment, supplier receipts and nightly review
+	$(PYTHON) tools/commerce_ready.py
+
+commerce-keys: ## Configure a private signing key for the local order notification receiver
+	$(PYTHON) tools/setup_commerce.py
+
+.PHONY: commerce-keys commerce-ready ready

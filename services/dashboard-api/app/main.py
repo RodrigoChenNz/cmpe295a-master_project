@@ -13,13 +13,34 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from pydantic import ValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from . import auth, bus, db, ingest, migrations, outbox
 from .config import settings
+from .commerce import (
+    admin as commerce_admin,
+    agent as commerce_agent,
+    catalog,
+    checkout,
+    decisions as commerce_decisions,
+    offers,
+    operations,
+    supplier,
+    webhooks,
+)
 from .routers import (
-    activity, categories, dashboard, labels, locations, meta, products, rules, stream, users,
+    activity,
+    categories,
+    dashboard,
+    labels,
+    locations,
+    meta,
+    products,
+    rules,
+    stream,
+    users,
 )
 from .routers import auth as auth_router
 from .routers import suggestions, system
@@ -57,7 +78,8 @@ async def _check_schema() -> None:
     # One table per schema change worth detecting; add to it, never replace.
     required = ("user_invites", "location_levels", "store_categories")
     missing = [
-        t for t in required
+        t
+        for t in required
         if not await db.fetchval("SELECT to_regclass($1) IS NOT NULL", f"public.{t}")
     ]
     # Columns added to tables that already existed, which the check above
@@ -68,7 +90,8 @@ async def _check_schema() -> None:
             """SELECT EXISTS (SELECT 1 FROM information_schema.columns
                                WHERE table_schema = 'public'
                                  AND table_name = $1 AND column_name = $2)""",
-            table, column,
+            table,
+            column,
         ):
             missing.append(f"{table}.{column}")
     if missing:
@@ -94,9 +117,7 @@ async def _ensure_singletons() -> None:
         settings.mqtt_port,
         settings.mqtt_tls,
     )
-    await db.execute(
-        "INSERT INTO change_limits (id) VALUES (TRUE) ON CONFLICT (id) DO NOTHING"
-    )
+    await db.execute("INSERT INTO change_limits (id) VALUES (TRUE) ON CONFLICT (id) DO NOTHING")
 
 
 @asynccontextmanager
@@ -112,6 +133,8 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(bus.run(stop), name="mqtt"),
         asyncio.create_task(outbox.run(stop), name="outbox"),
         asyncio.create_task(_housekeeping(stop), name="housekeeping"),
+        asyncio.create_task(commerce_agent.run(stop), name="store-agent"),
+        asyncio.create_task(webhooks.run(stop), name="order-webhooks"),
     ]
     log.info("dashboard-api ready")
 
@@ -149,6 +172,16 @@ app.add_middleware(
 )
 
 for r in (
+    commerce_admin.router,
+    commerce_agent.router,
+    catalog.router,
+    checkout.router,
+    commerce_decisions.router,
+    offers.router,
+    offers.public,
+    operations.router,
+    supplier.router,
+    webhooks.router,
     auth_router.router,
     meta.router,
     dashboard.router,
@@ -190,10 +223,23 @@ async def health() -> dict:
         database = False
 
     broker = bus.broker_state()
-    durable_queued = await db.fetchval("SELECT count(*) FROM message_outbox WHERE sent_at IS NULL") if database else None
+    durable_queued = (
+        await db.fetchval("SELECT count(*) FROM message_outbox WHERE sent_at IS NULL")
+        if database
+        else None
+    )
     return {
         "status": "ok" if database else "degraded",
         "database": database,
         "broker": broker | {"queued": durable_queued},
         "shelf_writes": "live" if broker.get("connected") else "queued",
     }
+
+
+@app.exception_handler(ValidationError)
+async def nested_body_error(_request: Request, exc: ValidationError) -> JSONResponse:
+    # Kind-specific proposals are validated after their discriminator is read.
+    return JSONResponse(
+        status_code=422,
+        content={"detail": [{"loc": list(e["loc"]), "msg": e["msg"]} for e in exc.errors()]},
+    )

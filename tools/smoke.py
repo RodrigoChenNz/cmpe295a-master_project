@@ -59,6 +59,53 @@ async def main(args):
                 raise RuntimeError(
                     "Create a product with a current price and pair one label before running smoke"
                 )
+            nightly = await conn.fetchval(
+                """SELECT EXISTS(SELECT 1 FROM proposals p JOIN agent_price_jobs j USING(decision_id)
+                WHERE p.product_id=$1 AND p.status='pending' AND p.expires_at>now())""",
+                row["product_id"],
+            )
+            daily = await conn.fetchval(
+                "SELECT price_delivery_mode='daily' FROM store_settings WHERE id"
+            )
+            if nightly or daily:
+                # Exercise the documented immediate manager path without
+                # superseding a queued nightly recommendation or daily cutover.
+                started = time.perf_counter()
+                response = await api.post(
+                    f"/api/products/{row['product_id']}/price",
+                    json={"price": str(row["price"]), "reason_tag": "Software check"},
+                )
+                response.raise_for_status()
+                publication_id = response.json()["history_id"]
+                for _ in range(150):
+                    result = await conn.fetchrow(
+                        """SELECT lp.publication_id,lp.result,l.emulated,l.rendered_line1,l.rendered_line2
+                        FROM label_pushes lp JOIN shelf_labels l USING(label_id)
+                        WHERE lp.publication_id=$1 AND lp.label_id=$2""",
+                        publication_id,
+                        row["label_id"],
+                    )
+                    if result and result["result"] == "confirmed":
+                        break
+                    await asyncio.sleep(0.1)
+                else:
+                    raise RuntimeError(
+                        "No matching immediate manager render acknowledgement within 15 seconds"
+                    )
+                print(
+                    json.dumps(
+                        dict(
+                            decision_id=None,
+                            product_id=row["product_id"],
+                            **dict(result),
+                            elapsed_seconds=round(time.perf_counter() - started, 3),
+                            path="immediate manager publication; nightly/daily workflow preserved",
+                            scope="software integration; not physical hardware validation",
+                        ),
+                        indent=2,
+                    )
+                )
+                return
             identifier = str(uuid4())
             now = datetime.now(timezone.utc)
             amount = float(row["price"])

@@ -58,3 +58,27 @@ def observation(state, forecast=None):
         ],
         dtype=np.float32,
     ).clip(0, 1)
+
+
+class FeedbackAdjustedPolicy:
+    """Fixed verdict penalties damp price moves; model weights stay unchanged.
+
+    Explain this wrapper itself so SHAP remains additive to the proposal that
+    the owner actually receives.
+    """
+
+    def __init__(self, policy, penalty):
+        self.policy = policy
+        self.penalty = min(0.8, max(0.0, float(penalty)))
+
+    def price(self, obs, *, cost, minimum, maximum):
+        raw = self.policy.price(obs, cost=cost, minimum=minimum, maximum=maximum)
+        current = float(obs[2]) * 2 * cost
+        return round(
+            float(
+                np.clip(
+                    current + (raw - current) * (1 - self.penalty), minimum, maximum
+                )
+            ),
+            2,
+        )

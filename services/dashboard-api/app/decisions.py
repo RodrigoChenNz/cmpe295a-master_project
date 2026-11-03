@@ -21,7 +21,14 @@ async def outcome(conn, row, status, actor, price=None):
 
 
 async def decide(
-    decision_id, *, actor, action="approve", price=None, reason=None, automatic=False
+    decision_id,
+    *,
+    actor,
+    action="approve",
+    price=None,
+    reason=None,
+    automatic=False,
+    feedback_tags=None,
 ):
     async with db.pool().acquire() as conn:
         async with conn.transaction():
@@ -116,19 +123,61 @@ async def decide(
             )
             result = {"published": False, "queued": 0}
             if action != "reject":
-                result = await gate.publish_price(
-                    product_id=product_id,
-                    price=final,
-                    reason_tag="Manager override"
-                    if status == "overridden"
-                    else row["reason_tag"],
-                    approval="auto"
-                    if automatic
-                    else ("override" if status == "overridden" else "manager"),
-                    approved_by=actor,
-                    decision_id=decision_id,
-                    agent_version=row["agent_version"],
-                    connection=conn,
+                setting = await conn.fetchrow(
+                    "SELECT price_delivery_mode,timezone,shelf_update_time FROM store_settings WHERE id"
+                )
+                if setting and setting["price_delivery_mode"] == "daily":
+                    from .commerce.cadence import next_cutover
+
+                    payload = dict(
+                        product_id=product_id,
+                        price=str(final),
+                        reason_tag="Manager override"
+                        if status == "overridden"
+                        else row["reason_tag"],
+                        approval="auto"
+                        if automatic
+                        else ("override" if status == "overridden" else "manager"),
+                        approved_by=actor,
+                        decision_id=str(decision_id),
+                        agent_version=row["agent_version"],
+                    )
+                    release_at = next_cutover(setting)
+                    await conn.execute(
+                        "INSERT INTO scheduled_price_publications(decision_id,product_id,reference_price,payload,release_at) VALUES($1,$2,$3,$4,$5)",
+                        decision_id,
+                        product_id,
+                        current,
+                        payload,
+                        release_at,
+                    )
+                    result = {
+                        "published": False,
+                        "queued": 1,
+                        "release_at": release_at.isoformat(),
+                        "delivery": "daily",
+                    }
+                else:
+                    result = await gate.publish_price(
+                        product_id=product_id,
+                        price=final,
+                        reason_tag="Manager override"
+                        if status == "overridden"
+                        else row["reason_tag"],
+                        approval="auto"
+                        if automatic
+                        else ("override" if status == "overridden" else "manager"),
+                        approved_by=actor,
+                        decision_id=decision_id,
+                        agent_version=row["agent_version"],
+                        connection=conn,
+                    )
+            if feedback_tags is not None:
+                await conn.execute(
+                    "INSERT INTO decision_feedback(decision_id,tags,reason) VALUES($1,$2,$3) ON CONFLICT(decision_id) DO UPDATE SET tags=$2,reason=$3,updated_at=now()",
+                    decision_id,
+                    feedback_tags,
+                    reason,
                 )
             await outcome(conn, row, status, actor, None if action == "reject" else final)
     bus.emit("suggestions", decided=[str(decision_id)], product_id=product_id, status=status)

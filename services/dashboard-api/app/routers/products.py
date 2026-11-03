@@ -528,12 +528,15 @@ async def update_product(
             status.HTTP_400_BAD_REQUEST, "Minimum price cannot exceed the maximum."
         )
     before = await db.fetchrow(
-        """SELECT min_price, max_price, auto_approve_pct
+        """SELECT min_price, max_price, auto_approve_pct, stock_on_hand
              FROM products WHERE product_id = $1""",
         product_id,
     )
     if before is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such product.")
+
+    if await db.fetchval("SELECT (commerce_enabled OR inventory_ledger_enabled) FROM store_settings WHERE id") and before["stock_on_hand"] != body.stock_on_hand:
+        raise HTTPException(409, "Commerce inventory is managed through Inventory movements; record an adjustment there.")
 
     move = "location_id" in body.model_fields_set
     if move:
@@ -548,7 +551,7 @@ async def update_product(
     await db.execute(
         """UPDATE products
               SET name = $2, display_name = $3, sku = $4, upc = $5, brand = $6,
-                  supplier = $7, category = $8, unit_cost = $9, stock_on_hand = $10,
+                  supplier = $7, category = $8, unit_cost = $9, stock_on_hand = CASE WHEN (SELECT (commerce_enabled OR inventory_ledger_enabled) FROM store_settings WHERE id) THEN stock_on_hand ELSE $10 END,
                   min_price = $11, max_price = $12, auto_approve_pct = $13,
                   agent_excluded = $14, image_url = $15,
                   policy_set_by = CASE WHEN $16 THEN $17 ELSE policy_set_by END,

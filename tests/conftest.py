@@ -21,7 +21,7 @@ async def database(monkeypatch):
     await db.connect()
     await migrations.apply()
     await db.execute(
-        "TRUNCATE products,users,store_settings,change_limits,message_outbox,pending_explanations RESTART IDENTITY CASCADE"
+        "TRUNCATE worker_heartbeats,products,users,store_settings,change_limits,message_outbox,pending_explanations RESTART IDENTITY CASCADE"
     )
     await db.execute(
         "INSERT INTO store_settings(id,mqtt_host,mqtt_port,mqtt_tls) VALUES(TRUE,'localhost',11883,FALSE)"

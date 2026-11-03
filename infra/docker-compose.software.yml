@@ -6,6 +6,9 @@ services:
       - postgres-software-data:/var/lib/postgresql/data
   dashboard-api:
     environment:
+      COMMERCE_AGENT_KEY: ${COMMERCE_AGENT_KEY:-}
+      COMMERCE_WEBHOOK_KEY: ${COMMERCE_WEBHOOK_KEY:-}
+      COMMERCE_WEBHOOK_URL: ${COMMERCE_WEBHOOK_URL:-}
       SHELFIQ_BOOTSTRAP_USER: ${SHELFIQ_BOOTSTRAP_USER:-admin}
       SHELFIQ_BOOTSTRAP_EMAIL: ${SHELFIQ_BOOTSTRAP_EMAIL:-admin@admin.com}
       SHELFIQ_BOOTSTRAP_NAME: ${SHELFIQ_BOOTSTRAP_NAME:-Admin}

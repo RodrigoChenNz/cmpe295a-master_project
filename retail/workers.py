@@ -43,7 +43,7 @@ async def simulator(client, pool):
     histories = {}
     tick = 0
     while True:
-        rows = await pool.fetch("""SELECT p.product_id,p.unit_cost,p.stock_on_hand,ph.price
+        rows = await pool.fetch("""SELECT p.product_id,p.unit_cost,p.stock_on_hand,ph.price,(SELECT (commerce_enabled OR inventory_ledger_enabled) FROM store_settings WHERE id) AS commerce_enabled
             FROM products p JOIN LATERAL(SELECT price FROM price_history WHERE product_id=p.product_id ORDER BY id DESC LIMIT 1) ph ON TRUE ORDER BY p.product_id""")
         for row in rows:
             cost = float(row["unit_cost"])
@@ -66,7 +66,9 @@ async def simulator(client, pool):
                 (row["stock_on_hand"] if row["stock_on_hand"] is not None else 200)
                 - sold,
             )
-            if tick % 7 == 0:
+            if row["commerce_enabled"]:
+                stock = row["stock_on_hand"] or 0
+            elif tick % 7 == 0:
                 stock = 200
             history.append(sold)
             history = history[-90:]
@@ -120,7 +122,7 @@ async def forecaster(client):
             log.exception("Forecast rejected")
 
 
-async def pricing(client):
+async def live_pricing(client, pool=None):
     algorithm = os.getenv("PRICING_POLICY", "rule")
     path = os.getenv("PRICING_MODEL")
     policy = PricingPolicy(algorithm, path)
@@ -173,6 +175,12 @@ async def pricing(client):
                 now() - datetime.fromisoformat(str(state["ts"]).replace("Z", "+00:00"))
             ).total_seconds()
             if not -5 <= age <= 120:
+                continue
+            if pool and await pool.fetchval(
+                """SELECT EXISTS(SELECT 1 FROM agent_price_jobs j JOIN proposals p USING(decision_id)
+                WHERE j.product_id=$1 AND p.status='pending' AND p.expires_at>now())""",
+                sku,
+            ):
                 continue
             cost = float(state["unit_cost"])
             limits = policies.get(sku, {})
@@ -278,7 +286,7 @@ async def device(client, pool):
 async def run(role):
     logging.basicConfig(level=logging.INFO)
     pool = None
-    if role in {"simulator", "device"}:
+    if role in {"simulator", "device", "pricing"}:
         pool = await asyncpg.create_pool(
             os.environ.get(
                 "DATABASE_URL",
@@ -304,7 +312,7 @@ async def run(role):
                     elif role == "forecaster":
                         await forecaster(client)
                     elif role == "pricing":
-                        await pricing(client)
+                        await pricing(client, pool)
                     else:
                         raise ValueError("Unknown worker")
             except (aiomqtt.MqttError, OSError):
@@ -313,3 +321,117 @@ async def run(role):
     finally:
         if pool:
             await pool.close()
+
+
+async def nightly_price_jobs(client, pool):
+    import json
+    from .pricing import FeedbackAdjustedPolicy
+
+    algorithm = os.getenv("PRICING_POLICY", "rule")
+    path = os.getenv("PRICING_MODEL")
+    policy = PricingPolicy(algorithm, path)
+    version = (
+        algorithm
+        + "-"
+        + (hashlib.sha256(Path(path).read_bytes()).hexdigest()[:12] if path else "v1")
+    )
+    while True:
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                if await conn.fetchval("SELECT pg_try_advisory_xact_lock(2952042)"):
+                    jobs = await conn.fetch("""SELECT j.* FROM agent_price_jobs j JOIN agent_runs r USING(run_id)
+                        WHERE r.status IN ('queued','running') AND (sent_at IS NULL OR (sent_at<now()-interval '5 seconds'
+                        AND (NOT EXISTS(SELECT 1 FROM proposals WHERE decision_id=j.decision_id)
+                             OR NOT EXISTS(SELECT 1 FROM shap_vectors WHERE decision_id=j.decision_id))))
+                        ORDER BY j.created_at LIMIT 20 FOR UPDATE OF j""")
+                    for job in jobs:
+                        payload = (
+                            json.loads(job["payload"])
+                            if isinstance(job["payload"], str)
+                            else job["payload"]
+                        )
+                        shaped = FeedbackAdjustedPolicy(
+                            policy, payload["feedback_penalty"]
+                        )
+                        state = payload["state"]
+                        obs = observation(state)
+                        options = dict(
+                            cost=float(state["unit_cost"]),
+                            minimum=payload["minimum"],
+                            maximum=payload["maximum"],
+                        )
+                        amount = shaped.price(obs, **options)
+                        base, shap = await asyncio.to_thread(
+                            explain_price, shaped, obs, **options
+                        )
+                        did = str(job["decision_id"])
+                        if "proposal_ts" not in payload:
+                            payload["proposal_ts"] = now().isoformat()
+                            await conn.execute(
+                                "UPDATE agent_price_jobs SET payload=$2::jsonb WHERE job_id=$1",
+                                job["job_id"],
+                                json.dumps(payload),
+                            )
+                        ts = datetime.fromisoformat(payload["proposal_ts"])
+                        proposal = dict(
+                            product_id=job["product_id"],
+                            decision_id=did,
+                            current_price=float(state["current_price"]),
+                            proposed_price=amount,
+                            currency="USD",
+                            reason_tag="Nightly review",
+                            agent_version=version + "-feedback-v1",
+                            ts=ts.isoformat(),
+                            expires_at=(ts + timedelta(hours=24)).isoformat(),
+                            rationale=f"Nightly {algorithm.upper()} price recommendation with a fixed human-feedback damping penalty of {payload['feedback_penalty']:.2f}. Model checkpoint weights are unchanged.",
+                        )
+                        explanation = dict(
+                            product_id=job["product_id"],
+                            decision_id=did,
+                            base_value=base,
+                            shap=shap,
+                            ts=ts.isoformat(),
+                            method="exact_interventional_single_reference_shapley",
+                            target="proposed_price_usd",
+                            reference=[0.5, 0.65, 0.65, 0.45, 0.5, 0.5],
+                        )
+                        await publish(client, "proposal", proposal)
+                        await publish(client, "explain", explanation)
+                        await conn.execute(
+                            "UPDATE agent_price_jobs SET sent_at=now() WHERE job_id=$1",
+                            job["job_id"],
+                        )
+        await asyncio.sleep(1)
+
+
+async def worker_liveness(pool, role):
+    algorithm = os.getenv("PRICING_POLICY", "rule")
+    path = os.getenv("PRICING_MODEL")
+    version = (
+        algorithm
+        + "-"
+        + (hashlib.sha256(Path(path).read_bytes()).hexdigest()[:12] if path else "v1")
+    )
+    while True:
+        await pool.execute(
+            "INSERT INTO worker_heartbeats(role,last_seen,model_version) VALUES($1,now(),$2) ON CONFLICT(role) DO UPDATE SET last_seen=now(),model_version=$2",
+            role,
+            version,
+        )
+        await asyncio.sleep(5)
+
+
+async def pricing(client, pool):
+    tasks = [
+        asyncio.create_task(worker_liveness(pool, "pricing")),
+        asyncio.create_task(live_pricing(client, pool)),
+        asyncio.create_task(nightly_price_jobs(client, pool)),
+    ]
+    try:
+        done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        for task in done:
+            task.result()
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)

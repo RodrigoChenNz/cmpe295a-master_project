@@ -72,6 +72,16 @@ async def _proposal(p):
                 if expires <= now
                 else ("superseded" if latest and created <= latest else "pending")
             )
+            if status == "pending" and not await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM agent_price_jobs WHERE decision_id=$1)",
+                decision_id,
+            ):
+                if await conn.fetchval(
+                    """SELECT EXISTS(SELECT 1 FROM proposals p JOIN agent_price_jobs j USING(decision_id)
+                    WHERE p.product_id=$1 AND p.status='pending' AND p.expires_at>now())""",
+                    product_id,
+                ):
+                    status = "superseded"
             if status == "pending":
                 previous = await conn.fetch(
                     """UPDATE proposals SET status='superseded',decided_at=now(),decided_by='system'
@@ -212,7 +222,9 @@ async def _state(p, conn=None):
         p,
         _when(p["ts"]),
     )
-    if latest is None or _when(p["ts"]) > latest:
+    if (latest is None or _when(p["ts"]) > latest) and not await conn.fetchval(
+        "SELECT (commerce_enabled OR inventory_ledger_enabled) FROM store_settings WHERE id"
+    ):
         await conn.execute(
             "UPDATE products SET stock_on_hand=$2 WHERE product_id=$1",
             p["product_id"],

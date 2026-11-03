@@ -38,7 +38,7 @@ export function System() {
           <p>{stage.age_seconds === null ? 'No activity received' : `${Math.max(0, Math.round(stage.age_seconds))} seconds ago`}</p>
         </div>)}
       </dl>
-      <p>Recent means activity within {stale_after_seconds ?? 120} seconds. Historical counts below do not establish that a worker is currently running. Receiver activity is separate from a new render confirmation.</p>
+      <p>Recent means activity within {stale_after_seconds ?? 120} seconds. Pricing activity includes a worker heartbeat while a nightly recommendation awaits review. Historical counts below do not establish that a worker is currently running. Receiver activity is separate from a new render confirmation.</p>
     </section>
     <section className={`card ${s.section}`}>
       <h2>Observed model versions</h2>

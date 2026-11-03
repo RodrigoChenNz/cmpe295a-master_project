@@ -1,6 +1,6 @@
 # End to end demo readiness
 
-Status checked on November 3, 2026. The pricing software demo passes live acceptance. Physical-device integration and the expanded commerce scope are incomplete. Main remains unchanged.
+Status checked on November 3, 2026. The pricing software demo passes live acceptance. The local commerce demo now includes checkout, negotiation, fulfillment, procurement, inventory, accounting and nightly reviews; see COMMERCE.md for its acceptance flow and protocol boundary. Physical-device integration and public UCP interoperability remain incomplete. Main remains unchanged.
 
 ## What is working
 
@@ -8,7 +8,7 @@ Status checked on November 3, 2026. The pricing software demo passes live accept
 - Rule, DQN and DDPG pricing interfaces, price explanations and manager approval or delegation.
 - Transactional price history and delivery jobs, MQTT with mutual TLS, persistent emulator state and matching render acknowledgements.
 - Console, role checks, current pipeline activity, label registration and pairing, audit history, additive migrations and failure recovery.
-- Local verification: 38 tests pass, frontend typecheck/build pass, contracts and critical Python lint pass. The build has a bundle-size advisory.
+- Local verification: the commerce expansion adds transaction and protocol tests; see the latest verification evidence. The earlier pricing-only baseline had 38 passing tests, frontend typecheck/build pass, contracts and critical Python lint pass. The build has a bundle-size advisory.
 - Live `make ready` passed: recent activity at all four stages, configured DQN selected, no pending deliveries, and a confirmed emulator render. One observed round trip took 0.259 seconds; this is not a latency benchmark or a physical-display result.
 
 The prior GitHub CI checks on PR #6 passed. The updated workflow also runs the TLS permission tests rather than skipping them. Confirm its latest revision is green before team integration.
@@ -31,9 +31,11 @@ Before integrating that PR, fix the additive database upgrade, publication/ackno
 
 Do not use an emulator confirmation or a broker publish as proof that a physical label redrew.
 
-## Expanded scope requiring a separate acceptance target
+## Expanded commerce scope
 
-PR #3 proposes nightly orchestration, UCP checkout, storefront, procurement, orders, accounting and feedback-based retraining. These features are not implemented by the pricing integration. They require a chosen interface, implementation and acceptance tests before the full-store scope can be called complete. The agent's synthetic churn proxy is not a validated customer churn model, and real-store benefits remain unmeasured.
+The local implementation now provides the feature flows proposed in PR #3: a unified decisions inbox, nightly orchestration and checkpoint pricing jobs with explicit feedback shaping, market observations, public test storefront, orders, owner-reviewed bulk deals, simulated supplier procurement and partial receiving, inventory movements, accounting and signed order notifications. `make commerce-ready` verifies these together against the running stack. Read [COMMERCE.md](COMMERCE.md) for exact startup commands, demonstration steps and limitations.
+
+The `/ucp/v1` routes are an explicitly local development binding. Full public UCP schema/capability interoperability, namespace hosting and deployment acceptance are still separate unfinished work. Test payments and simulated supplier orders are not real transactions. Feedback shaping does not claim checkpoint retraining, and the synthetic churn proxy remains unvalidated on real customers.
 
 ## Team integration
 
