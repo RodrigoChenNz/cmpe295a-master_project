@@ -407,3 +407,20 @@ async def test_onboarding_upgrade_preserves_existing_store(database):
             assert await conn.fetchval("SELECT category FROM products") == "Grocery"
             assert await conn.fetchval("SELECT name FROM store_categories") == "Grocery"
             await conn.execute(f"DROP SCHEMA {schema} CASCADE")
+
+
+async def test_pipeline_readiness_distinguishes_current_and_old_activity(database):
+    from app.routers.system import status
+
+    empty = await status(None)
+    assert not any(stage["recent"] for stage in empty["pipeline"])
+    p = proposal(agent_version="dqn-current")
+    await submit(p)
+    await database.execute("UPDATE shelf_labels SET emulated=true,last_seen_at=now()")
+    active = await status(None)
+    assert active["latest_pricing_model"] == "dqn-current"
+    assert next(s for s in active["pipeline"] if s["stage"] == "pricing")["recent"]
+    assert next(s for s in active["pipeline"] if s["stage"] == "receiver")["recent"]
+    await database.execute("UPDATE proposals SET ts=now()-interval '10 minutes'")
+    old = await status(None)
+    assert not next(s for s in old["pipeline"] if s["stage"] == "pricing")["recent"]

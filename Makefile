@@ -123,3 +123,6 @@ software-secure: env ## Start complete software with MQTT mTLS and role ACLs
 
 smoke-secure: ## Verify authenticated approval and render over mutual TLS
 	MQTT_PORT=8883 MQTT_TLS=true MQTT_CA_FILE=secrets/certs/ca.pem MQTT_CERT_FILE=secrets/certs/pricing.pem MQTT_KEY_FILE=secrets/certs/pricing.key $(PYTHON) tools/smoke.py
+
+ready: ## Verify fresh pipeline activity and a complete approved render round trip
+	$(PYTHON) tools/ready.py

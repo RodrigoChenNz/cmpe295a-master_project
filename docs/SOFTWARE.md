@@ -88,6 +88,25 @@ the base reconstructs the recommendation. There is no tree-model surrogate
 silently explaining an unrelated churn score. Overrides keep the original
 recommendation explanation separate from the manager's applied price.
 
+## Demo acceptance
+
+Run `make ready` against the running stack. It signs in using the local `.env`,
+checks recent observations, forecasting, pricing and receiver activity, verifies
+the configured pricing policy and an empty outbox, then approves a synthetic
+same-price recommendation and waits for the matching render report. It detects
+the running broker's TLS configuration and uses the existing pricing certificate
+for recommendations. No broker permissions are expanded.
+
+The command exits nonzero on failure and writes
+`artifacts/verification/readiness.json`. `ready: true` with `acceptance: passed`
+means this software round trip completed. It does not certify physical hardware.
+For read-only inspection use `.venv/bin/python tools/ready.py --no-smoke`;
+its result is explicitly labelled `read_only_checks_passed`.
+
+The Software status page shows activity from the last 120 seconds separately
+from historical model counts. A recent heartbeat still does not establish a new
+render; the acceptance command checks a new correlated publication.
+
 ## Verify
 
 ```sh
