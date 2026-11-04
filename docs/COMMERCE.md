@@ -127,16 +127,13 @@ The existing console remains `/api/*`; new groups are `/api/commerce`,
 `Idempotency-Key`; reusing a key with changed content returns 409. The cache is
 scoped to the authenticated caller, method, path and payload hash.
 
-The local `/ucp/v1` development binding supplies catalogue search/lookup,
-checkout create/get/replace/complete/cancel, bulk offers and buyer order reads.
-`/.well-known/ucp` describes the development boundary explicitly. Paths follow
-[UCP checkout REST](https://ucp.dev/2026-08-25/specification/shopping/checkout/rest/)
-and [catalog REST](https://ucp.dev/2026-08-25/specification/shopping/catalog/rest/).
-Checkout fulfillment, test payment and negotiation payloads are local bindings;
-this implementation is not advertised as certified interoperability with an
-arbitrary external UCP platform. Client-generated random buyer tokens are
-hashed in storage. The untrusted `UCP-Agent` header is not authentication.
-No buyer profile or callback URL is fetched from untrusted input.
+The browser's local development binding is `/api/storefront/*`. The public
+`/ucp/v1/*` adapter separately implements pinned standard catalog, checkout,
+fulfillment and order messages with signed platform negotiation. Discovery is
+`/.well-known/ucp`. See [DEPLOYMENT.md](DEPLOYMENT.md) for the isolated HTTPS
+acceptance stack, supported protocol scope, domain setup and schema limitations.
+Client-generated random buyer tokens are hashed in storage. Platform signatures
+and buyer ownership are checked separately.
 
 The supplier simulator is an in-process business adapter with an independent
 catalogue, stock and immutable checkout quote. Its authenticated inspection
@@ -167,11 +164,9 @@ whether hooks are configured and how many are queued/delivered.
 - Physical board/gateway work requires the teammate's hardware, compatible
   publication identity and actual render acknowledgements. See the PR review
   and hardware handoff; do not merge PR #5's price-hash ACK logic unchanged.
-- Public UCP interoperability requires implementing/validating the complete
-  standard payloads, controlled extension/payment namespaces, platform capability
-  negotiation and public deployment. The team's proposed namespace remains an
-  external configuration/ownership decision. The local demo does not claim this
-  work is complete.
+- Public hosting, an owned namespace domain, live DNS/certificate issuance and
+  external platform acceptance remain pending. The signed HTTPS binding is tested
+  locally; no certification or arbitrary-platform compatibility is claimed.
 - Real supplier integration, real payment processing and external market
   research credentials are not configured. The proposed demo uses a supplier
   simulator and test payments. No measured real-store profit/churn claims exist.

@@ -46,7 +46,7 @@ def cart(qty=2):
 
 async def create(client, qty=2):
     r = await client.post(
-        "/ucp/v1/checkout-sessions", json=cart(qty), headers=headers()
+        "/api/storefront/checkout-sessions", json=cart(qty), headers=headers()
     )
     assert r.status_code == 200, r.text
     return r.json()["id"]
@@ -54,7 +54,7 @@ async def create(client, qty=2):
 
 async def complete(client, sid, key=None):
     return await client.post(
-        f"/ucp/v1/checkout-sessions/{sid}/complete",
+        f"/api/storefront/checkout-sessions/{sid}/complete",
         json={"payment_token": "test_approved"},
         headers=headers(key),
     )
@@ -64,21 +64,21 @@ async def test_checkout_ownership_idempotency_and_stock_race(commerce):
     client, db, _ = commerce
     key = str(uuid4())
     a = await client.post(
-        "/ucp/v1/checkout-sessions", json=cart(), headers=headers(key)
+        "/api/storefront/checkout-sessions", json=cart(), headers=headers(key)
     )
     b = await client.post(
-        "/ucp/v1/checkout-sessions", json=cart(), headers=headers(key)
+        "/api/storefront/checkout-sessions", json=cart(), headers=headers(key)
     )
     assert a.json() == b.json()
     assert (
         await client.post(
-            "/ucp/v1/checkout-sessions", json=cart(3), headers=headers(key)
+            "/api/storefront/checkout-sessions", json=cart(3), headers=headers(key)
         )
     ).status_code == 409
     sid = a.json()["id"]
     assert (
         await client.get(
-            "/ucp/v1/checkout-sessions/" + sid, headers=headers(token="b" * 48)
+            "/api/storefront/checkout-sessions/" + sid, headers=headers(token="b" * 48)
         )
     ).status_code == 404
     first = await complete(client, sid, key="complete-0001")
@@ -94,9 +94,9 @@ async def test_checkout_ownership_idempotency_and_stock_race(commerce):
     assert await db.fetchval("SELECT count(*) FROM ledger_entries") == 1
     oid = first.json()["order"]["id"]
     assert (
-        await client.get("/ucp/v1/orders/" + oid, headers=headers(token="b" * 48))
+        await client.get("/api/storefront/orders/" + oid, headers=headers(token="b" * 48))
     ).status_code == 404
-    public = (await client.get("/ucp/v1/orders/" + oid, headers=headers())).json()
+    public = (await client.get("/api/storefront/orders/" + oid, headers=headers())).json()
     assert "unit_cost_minor" not in public["line_items"][0]
     await db.execute("UPDATE products SET stock_on_hand=1 WHERE product_id='SKU-001'")
     sids = await asyncio.gather(create(client, 1), create(client, 1))
@@ -155,7 +155,7 @@ async def test_payment_expiry_and_closed_store(commerce):
     client, db, _ = commerce
     sid = await create(client)
     response = await client.post(
-        "/ucp/v1/checkout-sessions/" + sid + "/complete",
+        "/api/storefront/checkout-sessions/" + sid + "/complete",
         json={"payment_token": "test_declined"},
         headers=headers(),
     )
@@ -167,7 +167,7 @@ async def test_payment_expiry_and_closed_store(commerce):
     )
     assert (await complete(client, sid)).status_code == 409
     await db.execute("UPDATE store_settings SET commerce_enabled=false WHERE id")
-    assert (await client.post("/ucp/v1/catalog/search", json={})).status_code == 503
+    assert (await client.post("/api/storefront/catalog/search", json={})).status_code == 503
 
 
 async def test_purchase_receipts_are_atomic_and_idempotent(commerce):
@@ -241,7 +241,7 @@ async def test_offer_gate_counter_accept_and_feedback(commerce):
     client, db, _ = commerce
     sid = await create(client, 5)
     offer = await client.post(
-        "/ucp/v1/checkout-sessions/" + sid + "/offers",
+        "/api/storefront/checkout-sessions/" + sid + "/offers",
         json={
             "line_items": [
                 {
@@ -280,7 +280,7 @@ async def test_offer_gate_counter_accept_and_feedback(commerce):
     )
     assert verdict.status_code == 200, verdict.text
     accepted = await client.post(
-        "/ucp/v1/checkout-sessions/" + sid + "/offers/" + data["offer_id"] + "/accept",
+        "/api/storefront/checkout-sessions/" + sid + "/offers/" + data["offer_id"] + "/accept",
         headers=headers(),
     )
     assert accepted.status_code == 200, accepted.text
@@ -529,7 +529,7 @@ async def test_tax_shipping_and_fractional_refunds_reconcile(commerce):
         "address": "Demo address, local test only",
     }
     created = await client.post(
-        "/ucp/v1/checkout-sessions", json=body, headers=headers()
+        "/api/storefront/checkout-sessions", json=body, headers=headers()
     )
     sid = created.json()["id"]
     paid = await complete(client, sid)

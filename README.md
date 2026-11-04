@@ -152,4 +152,4 @@ let them lapse.
 
 ## Local commerce demonstration
 
-The feature branch includes a test storefront, unified approvals, nightly model jobs, orders and negotiation, simulated supplier procurement, inventory and accounting ledgers, and signed order notifications. See [the commerce runbook](docs/COMMERCE.md) for startup, acceptance commands and the explicit development UCP boundary. Main and the shared report remain unchanged.
+The feature branch includes a test storefront, unified approvals, nightly model jobs, orders and negotiation, simulated supplier procurement, inventory and accounting ledgers, and signed order notifications. See [the commerce runbook](docs/COMMERCE.md) for startup, acceptance commands and [HTTPS/UCP deployment setup](docs/DEPLOYMENT.md). Main and the shared report remain unchanged.

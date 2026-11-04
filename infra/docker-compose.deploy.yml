@@ -1,0 +1,85 @@
+# Standalone deployment: PostgreSQL/MQTT/API have no host-published ports.
+name: shelfiq-deploy
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: retail
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set a private database password}
+      POSTGRES_DB: retail_pricing
+    volumes:
+      - ./postgres/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./postgres/02-shelfiq.sql:/docker-entrypoint-initdb.d/02-shelfiq.sql:ro
+      - store-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U retail -d retail_pricing']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    volumes:
+      - ../secrets/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ../secrets/acl:/mosquitto/config/acl:ro
+      - ../secrets/certs:/mosquitto/certs:ro
+      - mqtt-data:/mosquitto/data
+    restart: unless-stopped
+  api:
+    user: "${RUN_UID:?Run setup_ucp.py or set deployment UID}:${RUN_GID:?Set deployment GID}"
+    build:
+      context: ..
+      dockerfile: services/dashboard-api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://retail:${DB_PASSWORD}@postgres:5432/retail_pricing
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 8883
+      MQTT_TLS: 'true'
+      MQTT_CA_FILE: /srv/certs/ca.pem
+      MQTT_CERT_FILE: /srv/certs/api.pem
+      MQTT_KEY_FILE: /srv/certs/api.key
+      SESSION_COOKIE_SECURE: 'true'
+      CORS_ORIGINS: ${PUBLIC_URL:?Set the HTTPS public URL}
+      UCP_BASE_URL: ${PUBLIC_URL}
+      UCP_SCHEMA_ORIGIN: ${SCHEMA_ORIGIN:?Set the controlled schema origin}
+      UCP_PUBLIC_MODE: 'true'
+      UCP_REQUIRE_SIGNATURES: 'true'
+      UCP_SIGNING_KEY_FILE: /srv/ucp/business.pem
+      COMMERCE_WEBHOOK_KEY: ${COMMERCE_WEBHOOK_KEY:?Configure the private local notification key}
+      SHELFIQ_BOOTSTRAP_USER: ${SHELFIQ_BOOTSTRAP_USER:-admin}
+      SHELFIQ_BOOTSTRAP_EMAIL: ${SHELFIQ_BOOTSTRAP_EMAIL:-admin@example.test}
+      SHELFIQ_BOOTSTRAP_NAME: ${SHELFIQ_BOOTSTRAP_NAME:-Store administrator}
+      SHELFIQ_BOOTSTRAP_PASSWORD: ${SHELFIQ_BOOTSTRAP_PASSWORD:?Set a private bootstrap password}
+    volumes:
+      - ../secrets/certs:/srv/certs:ro
+      - ../secrets/ucp/business.pem:/srv/ucp/business.pem:ro
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8000', --proxy-headers, --forwarded-allow-ips, '172.29.50.10']
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: unless-stopped
+  gateway:
+    build:
+      context: ..
+      dockerfile: infra/deploy/Dockerfile
+    environment:
+      STORE_DOMAIN: ${STORE_DOMAIN:?Set the owned store domain}
+    ports: ['80:80','443:443']
+    volumes:
+      - ./deploy/routes.caddy:/etc/caddy/routes.caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      default:
+        ipv4_address: 172.29.50.10
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+networks:
+  default:
+    ipam:
+      config: [{subnet: 172.29.50.0/24}]
+volumes:
+  store-data:
+  mqtt-data:
+  caddy-data:
+  caddy-config:

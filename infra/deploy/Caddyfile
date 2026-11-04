@@ -1,0 +1,9 @@
+{
+    admin off
+}
+{$STORE_DOMAIN} {
+    tls {
+        protocols tls1.3
+    }
+    import /etc/caddy/routes.caddy
+}

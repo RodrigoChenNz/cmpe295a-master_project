@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
@@ -90,6 +90,7 @@ async def order_event(oid: UUID, body: OrderEvent, request: Request, user: Edito
                 ids,
             )
             products = {x["product_id"]: x for x in products}
+            refund_merchandise = refund_tax = 0
             for change in body.line_items:
                 line = lines[change.id]
                 n = change.quantity
@@ -134,6 +135,8 @@ async def order_event(oid: UUID, body: OrderEvent, request: Request, user: Edito
                         tax_total * (line["canceled"] + line["returned"]) // line["quantity"]
                     )
                     tax_delta = refunded - line.get("tax_refunded_minor", 0)
+                    refund_merchandise += line["item"]["price"] * n
+                    refund_tax += tax_delta
                     line["tax_refunded_minor"] = refunded
                     if tax_delta:
                         await conn.execute(
@@ -159,7 +162,29 @@ async def order_event(oid: UUID, body: OrderEvent, request: Request, user: Edito
                     )
                 )
             )
-            event = {"id": str(uuid4()), **body.model_dump()}
+            event = {
+                "id": str(uuid4()),
+                "occurred_at": datetime.now(timezone.utc).isoformat(),
+                **body.model_dump(),
+            }
+            if refund_merchandise or refund_tax:
+                payload.setdefault("adjustments", []).append(
+                    {
+                        "id": event["id"],
+                        "type": "refund",
+                        "occurred_at": event["occurred_at"],
+                        "status": "completed",
+                        "description": body.type,
+                        "line_items": [
+                            {"id": x.id, "quantity": -x.quantity} for x in body.line_items
+                        ],
+                        "totals": [
+                            {"type": "subtotal", "amount": -refund_merchandise},
+                            {"type": "tax", "amount": -refund_tax},
+                            {"type": "total", "amount": -(refund_merchandise + refund_tax)},
+                        ],
+                    }
+                )
             payload["fulfillment"]["events"].append(event)
             payload["status"] = status
             await conn.execute(

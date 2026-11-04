@@ -49,7 +49,7 @@ async def apply_prices(conn, session, lines):
     )
 
 
-@public.post("/ucp/v1/checkout-sessions/{sid}/offers")
+@public.post("/api/storefront/checkout-sessions/{sid}/offers")
 async def make_offer(sid: UUID, body: Offer, request: Request):
     owner = buyer(request)
     async with db.pool().acquire() as conn, conn.transaction():
@@ -217,7 +217,7 @@ async def decide_offer(conn, decision, verdict, session, actor):
     return {"offer_id": str(oid), "status": status}
 
 
-@public.get("/ucp/v1/checkout-sessions/{sid}/offers/{oid}")
+@public.get("/api/storefront/checkout-sessions/{sid}/offers/{oid}")
 async def get_offer(sid: UUID, oid: UUID, request: Request):
     async with db.pool().acquire() as conn:
         await lock_session(conn, sid, buyer(request), active=False)
@@ -229,7 +229,7 @@ async def get_offer(sid: UUID, oid: UUID, request: Request):
     return wire(row)
 
 
-@public.post("/ucp/v1/checkout-sessions/{sid}/offers/{oid}/{action}")
+@public.post("/api/storefront/checkout-sessions/{sid}/offers/{oid}/{action}")
 async def respond_offer(sid: UUID, oid: UUID, action: str, request: Request):
     if action not in ("accept", "withdraw"):
         raise HTTPException(404, "Unknown offer action.")

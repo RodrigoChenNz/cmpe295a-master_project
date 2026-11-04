@@ -6,5 +6,6 @@
 .pytest_cache
 artifacts
 .env
+.env.*
 
 secrets

@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     shelfiq_bootstrap_name: str = ""
     shelfiq_bootstrap_password: str = ""
 
+    ucp_base_url: str = "https://localhost:8443"
+    ucp_schema_origin: str = "https://schemas.shelfiq.test:8443"
+    ucp_public_mode: bool = False
+    ucp_require_signatures: bool = False
+    ucp_signing_key_file: str = ""
+    ucp_platform_key_file: str = ""
+    ucp_platform_profiles_json: str = "{}"
+
     commerce_agent_key: str = ""
     commerce_webhook_key: str = ""
     commerce_webhook_url: str = ""

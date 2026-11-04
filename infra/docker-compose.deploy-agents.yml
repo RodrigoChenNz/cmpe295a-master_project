@@ -1,0 +1,38 @@
+# Optional real forecasting/pricing workers. No fake observations or display emulator.
+# Requires a trained checkpoint under artifacts/ and broker identities from setup_tls.py.
+services:
+  forecaster:
+    build: &worker-build
+      context: ..
+      dockerfile: services/Dockerfile.worker
+    user: "${RUN_UID}:${RUN_GID}"
+    command: [forecaster]
+    environment: &worker-env
+      DATABASE_URL: postgresql://retail:${DB_PASSWORD}@postgres:5432/retail_pricing
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 8883
+      MQTT_TLS: 'true'
+      MQTT_CA_FILE: /srv/certs/ca.pem
+      MQTT_CERT_FILE: /srv/certs/forecaster.pem
+      MQTT_KEY_FILE: /srv/certs/forecaster.key
+      FORECAST_METHOD: seasonal
+    volumes: [../secrets/certs:/srv/certs:ro]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+  pricing-agent:
+    build: *worker-build
+    user: "${RUN_UID}:${RUN_GID}"
+    command: [pricing]
+    environment:
+      <<: *worker-env
+      MQTT_CERT_FILE: /srv/certs/pricing.pem
+      MQTT_KEY_FILE: /srv/certs/pricing.key
+      PRICING_POLICY: ${PRICING_POLICY:-dqn}
+      PRICING_MODEL: ${PRICING_MODEL:?Select a trained checkpoint under /srv/artifacts/}
+    volumes:
+      - ../secrets/certs:/srv/certs:ro
+      - ../artifacts:/srv/artifacts:ro
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped

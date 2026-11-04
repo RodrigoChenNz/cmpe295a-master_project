@@ -8,3 +8,4 @@ email-validator==2.3.0
 jsonschema==4.26.0
 websockets==16.0
 httpx==0.28.1
+cryptography==50.0.2

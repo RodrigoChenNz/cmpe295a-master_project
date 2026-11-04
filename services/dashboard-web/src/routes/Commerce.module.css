@@ -191,6 +191,10 @@
   .shop {
     padding: 16px;
   }
+  .shop header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
   .shop h1 {
     font-size: 30px;
   }

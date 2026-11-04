@@ -1,0 +1,346 @@
+{
+  "schemas/shopping/checkout.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/checkout.json",
+    "sha256": "79f436af49e42087c99d6f8bbffe9e7fe87fdbb722f9f094cf3f6f44854c4f0d"
+  },
+  "schemas/shopping/order.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/order.json",
+    "sha256": "02953a6723d767f63408805d0bf8db9985ab90d0d6091323310c691d08f4fcf7"
+  },
+  "schemas/shopping/catalog_search.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/catalog_search.json",
+    "sha256": "39368945d2da13158d51fb09c1b3f237f4ab1321295d3e351270bf49b627893c"
+  },
+  "schemas/shopping/catalog_lookup.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/catalog_lookup.json",
+    "sha256": "9d13c36b540172f2fb8324da844ee561fd362d1fa824a6f37d1121ede88fbd97"
+  },
+  "schemas/shopping/fulfillment.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/fulfillment.json",
+    "sha256": "752e9128987db19d914fe8001135f321ad495eeeb2e4d695f699f6010f9d06cd"
+  },
+  "schemas/ucp.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/ucp.json",
+    "sha256": "c4cfef8942698198df8bea458458bc3835e06ca73cb5adf051af6b1ded38ccb6"
+  },
+  "services/shopping/rest.openapi.json": {
+    "url": "https://ucp.dev/2026-08-25/services/shopping/rest.openapi.json",
+    "sha256": "058d48491a62ae4388a98d6a562d7f9ab19da725251948cc1f7df90f55f137dd"
+  },
+  "schemas/shopping/types/line_item.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/line_item.json",
+    "sha256": "939e73f222cec9d068b25570c7c34c9f22a16824841bba745d57180c5a1e5501"
+  },
+  "schemas/shopping/types/buyer.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/buyer.json",
+    "sha256": "c08bbc81d25c005df227a9b27abaf8e7fc192e0094cdfd2be616c2b9c5166b61"
+  },
+  "schemas/common/types/context.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/context.json",
+    "sha256": "bb82051ff24acfdf6217c6d3ca777d9a3115d99cc5d11c8252438cd5d543fa47"
+  },
+  "schemas/common/types/signals.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/signals.json",
+    "sha256": "e7741b8379a9139c00fda1a02f3948d02357577def3e2ef518a0bdfd2f01b092"
+  },
+  "schemas/shopping/types/attribution.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/attribution.json",
+    "sha256": "a898fc9772d871450822c1fc807a35f5b11a162378514e0411bb54a1b510c290"
+  },
+  "schemas/common/types/totals.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/totals.json",
+    "sha256": "e28e1bd25578307e2b4086f1a2cf82a2c43cd8554ba1aa0ac47150d31f3d207c"
+  },
+  "schemas/common/types/actions.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/actions.json",
+    "sha256": "9a99c768d04b132a408d119057985c16d0fcccea9360700ea966d930c0eff248"
+  },
+  "schemas/common/types/message.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/message.json",
+    "sha256": "8c478abde57aa4d0daf1f329eba63081598761adfd8c1b1c187e0f9487dd1ba1"
+  },
+  "schemas/common/types/link.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/link.json",
+    "sha256": "e920207f10a6568572e1ebb2d8279e5ee6b3c7984dde9b0a52cd17a2ad95042c"
+  },
+  "schemas/common/types/policy.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/policy.json",
+    "sha256": "be00749f25463835945597aed8c8b103a93524a92595b4c79d4756bea7169734"
+  },
+  "schemas/common/types/payment.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/payment.json",
+    "sha256": "23b2bc9a9e3761f1c3d6fc732e7f098c652ca20cca48f2b0fdb32763b3cd9896"
+  },
+  "schemas/shopping/types/order_confirmation.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/order_confirmation.json",
+    "sha256": "7d462b9ed9ee71044bd9985248f1f828125943b0a1b5e9512751aed5b8fec163"
+  },
+  "schemas/shopping/types/order_line_item.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/order_line_item.json",
+    "sha256": "0f60e641d4be2ba3c7386ea840738b5287c1ac5ee266063db7f2079f445503e2"
+  },
+  "schemas/shopping/types/expectation.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/expectation.json",
+    "sha256": "8f8674847bcf717ba8085800a35ff5289306e2fea99cab197a6d580f6dd888d7"
+  },
+  "schemas/shopping/types/fulfillment_event.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/fulfillment_event.json",
+    "sha256": "1eb1ff3a84674c47651f2dbee1ccdbb210e1fe0d76083a5d2df834df57a411ed"
+  },
+  "schemas/shopping/types/adjustment.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/adjustment.json",
+    "sha256": "ad54189dc1c07b8f97addb883b2513c08dfcb3a23332639798222c5a9ac101bf"
+  },
+  "schemas/shopping/types/search_filters.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/search_filters.json",
+    "sha256": "9c96f4f98cb53e9d24e79cf1bde295d1f31613c35acaeaab5d88d7f8db6f2db0"
+  },
+  "schemas/common/types/pagination.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/pagination.json",
+    "sha256": "1e230248542416137accbc86dd2a21e61559c2df6e02a761474421790f580197"
+  },
+  "schemas/shopping/types/product.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/product.json",
+    "sha256": "c10ec6d5db8f5db9d6c35b2fd0aebb33be65c2527abe9c8725dbc350dd42b98b"
+  },
+  "schemas/shopping/types/variant.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/variant.json",
+    "sha256": "e847052ba453569207872679bbdf4f7f5764a0cb6a95bcc3fe51485468e4e7a1"
+  },
+  "schemas/shopping/types/input_correlation.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/input_correlation.json",
+    "sha256": "9b53d8b30088cff22c5356b48cd355f13b628a7d7599765f4df918c553e476bf"
+  },
+  "schemas/shopping/types/selected_option.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/selected_option.json",
+    "sha256": "7a15fa5796eeec84f223524083ef3446e68a5d5ac24d06cb929c709d12164e96"
+  },
+  "schemas/shopping/types/detail_option_value.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/detail_option_value.json",
+    "sha256": "7d1d01173ef1b57a8f8bd6123a4192c6f4848bcff5e8eb732f1cb0146ff49447"
+  },
+  "schemas/shopping/types/fulfillment_option.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/fulfillment_option.json",
+    "sha256": "e54ea29baf6dcb235e7d08d59419dd186bf819a5e6e0554aa075212557df37e5"
+  },
+  "schemas/shopping/types/fulfillment_group.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/fulfillment_group.json",
+    "sha256": "231efaea0c2666b524c45fe7033488baa33c6e2088be6c468ff743c08b2bff46"
+  },
+  "schemas/shopping/types/fulfillment_method.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/fulfillment_method.json",
+    "sha256": "b917c0d475566c5896f2d5196d29e3a1f9edf3374ef2932097c5a533d02f20f8"
+  },
+  "schemas/shopping/types/fulfillment_available_method.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/fulfillment_available_method.json",
+    "sha256": "71ebdfe47eefa2e6e1b7e44f27cc14e3374391ce60c300f25f58ca6d1ac80213"
+  },
+  "schemas/shopping/types/fulfillment.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/fulfillment.json",
+    "sha256": "d39353da9a1932273d65f0a926f98832dc60a707330bd828048b3bd9a960d577"
+  },
+  "schemas/common/types/description.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/description.json",
+    "sha256": "568fbd8b990166f6876c5553a64cadbe74058af2f53b853f4811d2be7742b617"
+  },
+  "schemas/shopping/types/availability.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/availability.json",
+    "sha256": "13e2f378af77010500d26f4cff574c16271eb5b4555a57b10d1f6cdb199a3971"
+  },
+  "schemas/shopping/types/fulfillment_option_base.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/fulfillment_option_base.json",
+    "sha256": "9455019abb7d63ed1224020274a2b754e536bb7ba13f2237e628301cbca85e4c"
+  },
+  "schemas/shopping/types/fulfillment_destination_filter.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/fulfillment_destination_filter.json",
+    "sha256": "f7df1e558ecc8f934c1b6bc4d05d7861b1dc2d71d2373908164a2670fdfe8db3"
+  },
+  "schemas/capability.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/capability.json",
+    "sha256": "260b7b0e06b6ff59f9b44a32218567be931e1f27551eb1af3fd7a865d8fb3a55"
+  },
+  "schemas/shopping/types/platform_fulfillment_config.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/platform_fulfillment_config.json",
+    "sha256": "6bcdc0b3382d1a081b54e440cb5a0fda372ff99645c67865c7f65353f4648f93"
+  },
+  "schemas/shopping/types/business_fulfillment_config.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/business_fulfillment_config.json",
+    "sha256": "5855b1da9ced885bfd09a9d9ffb127574f80c0c978262cb0a09cb7a37a0b95e4"
+  },
+  "schemas/common/types/error_response.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/error_response.json",
+    "sha256": "524cc2b32e3cedf9674509aecaef65e2739d2724fa2110aab6f5795adb89e46e"
+  },
+  "schemas/common/types/reverse_domain_name.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/reverse_domain_name.json",
+    "sha256": "c0a1b2f4119ec5abbd7123906b6be2bd112beb62b4da626ac2563424cf38cf38"
+  },
+  "schemas/common/types/request_constraints.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/request_constraints.json",
+    "sha256": "3a742143755b5480bd055edbc7b4d4582a98f90909346c993b0b58b6f8bdc8ca"
+  },
+  "schemas/service.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/service.json",
+    "sha256": "a5205c8643442f3e11a4b002c3e731df2ece65cc20053b14f2e796b8a13967d1"
+  },
+  "schemas/payment_handler.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/payment_handler.json",
+    "sha256": "d2fdfc659b0749b342ce8d6ec30debef73f66f70adc8edeadea71e849e45b4f6"
+  },
+  "schemas/shopping/cart.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/cart.json",
+    "sha256": "36c975c3b7f3a56ebecf3a325c18924dcf985a3d9cb8ed9dc010874e00f32b49"
+  },
+  "schemas/shopping/types/item.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/item.json",
+    "sha256": "6c7ba814c4c7d0a170565c78bbc848e05b066d57d4de3f75573155f0d5a556a2"
+  },
+  "schemas/common/types/total.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/total.json",
+    "sha256": "71f09df1f7052cf1821f5a94990a9b896c2eb50e047d2252c3a5a4f40c8c485a"
+  },
+  "schemas/common/types/locality.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/locality.json",
+    "sha256": "e892c6616a6a8dda77d922a4c59589f3e2d1b71f1c4f5a5ede30b1075bf802db"
+  },
+  "schemas/common/types/signed_amount.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/signed_amount.json",
+    "sha256": "92d36e79de75336297869131e062a097d4c9d481811792518489f8cce16f8ead"
+  },
+  "schemas/common/types/message_error.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/message_error.json",
+    "sha256": "99b51f8a9a2fccdb3daf49ea62a081e8945302856187de8ad2ecc96c578dde4d"
+  },
+  "schemas/common/types/message_warning.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/message_warning.json",
+    "sha256": "04ca19d321ef2c8824443f5174875827621b66cc636daf08ee79f88907d4694d"
+  },
+  "schemas/common/types/message_info.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/message_info.json",
+    "sha256": "da9a8f078e9c4f891dfe4f3a7bd55585403becfb52984e6eacf85a1e5c87c592"
+  },
+  "schemas/common/types/payment_instrument.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/payment_instrument.json",
+    "sha256": "23bfb3b2256e5d35400933d3afbb2ac055e8cd1061688bb7516aaf25db7a182a"
+  },
+  "schemas/common/types/postal_address.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/postal_address.json",
+    "sha256": "beebaff34759d5d0e417f3d3081dad4e4a38bcd692bf52ef9d617c6827ba6263"
+  },
+  "schemas/common/types/measure.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/measure.json",
+    "sha256": "64449fc991938beca8854dafb6783b2916d98c5f9626ca664c0a437c4aee2c16"
+  },
+  "schemas/common/types/price_filter.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/price_filter.json",
+    "sha256": "59e7b9525d5b6c4c516342a48103a2879a549b3c6f76bdbd649e7234c64468c2"
+  },
+  "schemas/shopping/types/category.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/category.json",
+    "sha256": "e79479dc88053dd77a932f14194c73b718501a0ab7fb13bbd7cdf328f59ccf8d"
+  },
+  "schemas/common/types/price_range.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/price_range.json",
+    "sha256": "49598f312eb1d62aee028d2186140f04bda93e2e15e03e16111aa5aeb31175a7"
+  },
+  "schemas/common/types/media.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/media.json",
+    "sha256": "ce9331120cf7ecb3a94d6dd9d554357e6aef4e476fb0f4fd50a6ab44fe38f28c"
+  },
+  "schemas/shopping/types/product_option.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/product_option.json",
+    "sha256": "4b9cb86309eb34e8208bf8d0e3d5e1fbff1e2a5b835b4edb7edbefbd4c99e632"
+  },
+  "schemas/shopping/types/rating.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/rating.json",
+    "sha256": "0455373914586ede719a978f7ff202f71a3c9b38e73ceb50bb0e5398ec8eab2b"
+  },
+  "schemas/common/types/price.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/price.json",
+    "sha256": "b7db943293156039302697ee2b7160cc2fbf9fa58bbd26a1f8b98c4f6922f264"
+  },
+  "schemas/common/types/quantity_unit.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/quantity_unit.json",
+    "sha256": "57ac7f302d6829e3c2770842c7c8ec02534592ceea9c74d3b583dbb5aeb4fa19"
+  },
+  "schemas/shopping/types/unit_price.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/unit_price.json",
+    "sha256": "7e7909e675e01ac0e78c25dd6dfcd9b83b35fb045609a14513f2fc491faafe84"
+  },
+  "schemas/shopping/types/option_value.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/option_value.json",
+    "sha256": "b34e79de80fe5fbf3a64423de616aa9ac46a5e72cc23f216eaef0a5bb86d388c"
+  },
+  "schemas/shopping/types/fulfillment_destination.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/fulfillment_destination.json",
+    "sha256": "b11495af0b0b14ee1ce502de9bd7f12965016da04bed5cac71969253b1fcf75e"
+  },
+  "schemas/shopping/types/shipping_destination.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/shipping_destination.json",
+    "sha256": "f1dcc014b5707965d325c0ec84e3f9a1ed7834eb3d6c0d842d3f137f916e82a4"
+  },
+  "schemas/shopping/types/location_destination.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/shopping/types/location_destination.json",
+    "sha256": "8b4cd076fbb65219825fd226265a2c9c7e37a3cc6989b539c86095364741d4f2"
+  },
+  "schemas/common/types/constraint_expression.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/constraint_expression.json",
+    "sha256": "6e53873fb947369d7489e34585c7cabc931805e442a4e8a2a62c227ce88c6abe"
+  },
+  "schemas/transports/embedded_config.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/transports/embedded_config.json",
+    "sha256": "a8564fd784009598518749d5ee9d78af2dbda990b447206452cb529587e6a3f9"
+  },
+  "schemas/common/types/available_payment_instrument.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/available_payment_instrument.json",
+    "sha256": "9e4ffe9c4591d961356fce2571e0dd0b8924c995f1726b4adeac464f4039e150"
+  },
+  "schemas/common/types/amount.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/amount.json",
+    "sha256": "95045d952099ed3b60e623d9ab3e0f68966246df0320fddf13e4964f07157f64"
+  },
+  "schemas/common/types/error_code.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/error_code.json",
+    "sha256": "47a9b9a39e24dd26795aab8e9497303adb7f071e5081ef6c89d0cadd74874f0d"
+  },
+  "schemas/common/types/warning_code.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/warning_code.json",
+    "sha256": "5b2bf4815c7aee16bacb9fa17f70b0509c6975fcb2d123af411b9f06a1f4c790"
+  },
+  "schemas/common/types/info_code.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/info_code.json",
+    "sha256": "45d51f3d34228e1d30ae32278cd966a2e09a6d2da06d5d40c14cfcd916f5f322"
+  },
+  "schemas/common/types/payment_credential.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/payment_credential.json",
+    "sha256": "62d07c55b750d65348b9b02f93164006c1d459f2389b6476a2ac6ac2d50b2b57"
+  },
+  "schemas/common/types/unit.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/unit.json",
+    "sha256": "db51f18120da5fafc403271ae4f7e33b7c272b02808e6665f438e1a55a9fc336"
+  },
+  "schemas/common/types/media_source.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/media_source.json",
+    "sha256": "b2e9995262f05aa07ab0b69ba1ef6558260a59417d6980acf7ca912c9bd97305"
+  },
+  "schemas/common/types/media_image.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/media_image.json",
+    "sha256": "7d354e3ec838db6072f88229d81f9593ac838bd6fc4da7147d923a3a995493a1"
+  },
+  "schemas/common/types/media_video.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/media_video.json",
+    "sha256": "3b319af91c038d5220cc7b4d5bb77c49f444b47f033f728fd36d140af61a746f"
+  },
+  "schemas/common/types/media_external_video.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/media_external_video.json",
+    "sha256": "200c8e1a6ebe68b4fcad12875c0d1cb9a34271d95c41c4411d21c6afdf9926fc"
+  },
+  "schemas/common/types/media_model_3d.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/media_model_3d.json",
+    "sha256": "ef3a02c89172b6ec4bba3b2051eebfbbe898e615dbdef6b02888fe6a0c0b2211"
+  },
+  "schemas/common/types/location_summary.json": {
+    "url": "https://ucp.dev/2026-08-25/schemas/common/types/location_summary.json",
+    "sha256": "fce16927ad53639283525389fbb0e0f0ff27c3ebf8ee2297063b4e451c22881d"
+  }
+}

@@ -12,8 +12,8 @@ import { ApiError } from './api';
 import type { StreamEvent } from './types';
 
 const WS_URL =
-  import.meta.env.VITE_WS_URL ??
-  (import.meta.env.VITE_API_URL ?? 'http://localhost:8000')
+  import.meta.env.VITE_WS_URL ||
+  (import.meta.env.VITE_API_URL || window.location.origin)
     .replace(/^http/, 'ws')
     .replace(/\/$/, '') + '/ws/stream';
 

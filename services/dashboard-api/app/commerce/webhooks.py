@@ -1,8 +1,8 @@
 """Persisted order notifications with an RFC 9421 HMAC-SHA256 signature.
 
 Local mode delivers through the ASGI HTTP adapter to the signed test receiver.
-An optional deployment target is an operator-configured HTTPS URL. No buyer can
-supply a callback URL; redirect following and profile URL fetching are disabled.
+An optional deployment target is an operator-configured HTTPS URL. The local receiver uses an operator-configured shared key. Public UCP orders
+use the separately validated platform callback and Ed25519 delivery adapter.
 """
 
 import asyncio
@@ -99,6 +99,16 @@ def verify(url, body, headers, key):
 async def notify(conn, payload):
     from .checkout import buyer_order
 
+    if payload.get("_ucp", {}).get("order_webhook_url"):
+        from ..ucp.router import order_output
+
+        await conn.execute(
+            "INSERT INTO commerce_webhook_outbox(event_id,payload,target_url,signing_profile) VALUES($1,$2,$3,'ucp_ed25519')",
+            uuid4(),
+            order_output(payload),
+            payload["_ucp"]["order_webhook_url"],
+        )
+        return
     payload = buyer_order(payload)
     # No silent notification claim when no receiver key was configured.
     await conn.execute(
@@ -148,7 +158,7 @@ async def receive(request: Request):
 
 async def drain():
     key = settings.commerce_webhook_key
-    if len(key) < 32:
+    if len(key) < 32 and not settings.ucp_signing_key_file:
         return 0
     url = settings.commerce_webhook_url or LOCAL_URL
     if settings.commerce_webhook_url and (not url.startswith("https://") or "#" in url):
@@ -174,6 +184,25 @@ async def drain():
                 transport=transport, timeout=10, follow_redirects=False, verify=tls
             ) as client:
                 for job in jobs:
+                    if job["signing_profile"] == "ucp_ed25519":
+                        from ..ucp.notifications import deliver
+
+                        try:
+                            await deliver(job)
+                            await conn.execute(
+                                "UPDATE commerce_webhook_outbox SET delivered_at=now(),attempts=attempts+1,last_error=NULL WHERE event_id=$1",
+                                job["event_id"],
+                            )
+                            count += 1
+                        except Exception as exc:
+                            await conn.execute(
+                                "UPDATE commerce_webhook_outbox SET attempts=attempts+1,last_error=$2 WHERE event_id=$1",
+                                job["event_id"],
+                                str(exc)[:1000],
+                            )
+                        continue
+                    if len(key) < 32:
+                        continue
                     raw = json.dumps(
                         job["payload"], sort_keys=True, separators=(",", ":")
                     ).encode()

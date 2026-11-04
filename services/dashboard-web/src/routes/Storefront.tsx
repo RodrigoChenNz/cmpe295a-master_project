@@ -22,10 +22,12 @@ function useBuyerOrder(id: string | undefined) {
   useEffect(() => {
     if (!id) return;
     let active = true;
+    setOrder(null);
+    setError("");
     const load = () =>
-      shop<Order>(`/ucp/v1/orders/${id}`)
+      shop<Order>(`/api/storefront/orders/${id}`)
         .then((x) => {
-          if (active) setOrder(x);
+          if (active) { setOrder(x); setError(""); }
         })
         .catch((e) => {
           if (active) setError(String(e.message));
@@ -50,19 +52,22 @@ function BuyerOrder() {
           {error}
         </p>
       )}
+      {!order && !error && <p role="status">Loading your order…</p>}
       {order && (
         <>
-          <p>Order {order.id}</p>
-          <h3>{order.status}</h3>
+          <p className={s.small}>Order {order.id}</p>
+          <h3>{order.status.replaceAll("_", " ")}</h3>
           <p>Test payment received. No money was charged.</p>
           {order.line_items.map((line) => (
             <p key={line.id}>
               {line.item.title} · {line.quantity} units ·{" "}
               {usd(line.item.price * line.quantity)} · {line.fulfilled} shipped
-              · {line.returned} returned
+              · {line.delivered} delivered · {line.canceled} canceled · {line.returned} returned
             </p>
           ))}
           <p>Fulfillment: {order.fulfillment.method}</p>
+          <p>Original test total: <strong>{usd(order.totals.find(t => t.type === "total")?.amount || 0)}</strong></p>
+          {(order.adjustments || []).map(a => <p key={a.id}>Test refund: {usd(-(a.totals.find(t => t.type === "total")?.amount || 0))} ({a.description.replaceAll("_", " ")})</p>)}
           {order.fulfillment.events.map((e) => (
             <p key={e.id}>
               {e.type} {e.tracking_number}
@@ -104,6 +109,7 @@ function ProductWhy() {
 }
 function Browse() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [email, setEmail] = useState("");
@@ -117,14 +123,19 @@ function Browse() {
   const [payment, setPayment] = useState("test_approved");
   const load = useCallback(
     () =>
-      shop<{ products: CatalogProduct[] }>("/ucp/v1/catalog/search", {
+      shop<{ products: CatalogProduct[] }>("/api/storefront/catalog/search", {
         query,
         pagination: { limit: 100 },
-      }).then((x) => setProducts(x.products)),
+      }).then((x) => x.products),
     [query],
   );
   useEffect(() => {
-    load().catch((e) => setError(e.message));
+    let active = true;
+    setLoading(true);
+    load().then(x => { if (active) { setProducts(x); setError(""); } })
+      .catch(e => { if (active) setError(e.message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [load]);
   useEffect(() => {
     if (
@@ -136,7 +147,7 @@ function Browse() {
     const timer = setInterval(
       () =>
         shop<Offer>(
-          `/ucp/v1/checkout-sessions/${checkout.id}/offers/${offer.offer_id}`,
+          `/api/storefront/checkout-sessions/${checkout.id}/offers/${offer.offer_id}`,
         )
           .then(setOffer)
           .catch((e) => setError(e.message)),
@@ -156,7 +167,7 @@ function Browse() {
     }
   }
   async function open() {
-    const value = await shop<Checkout>("/ucp/v1/checkout-sessions", {
+    const value = await shop<Checkout>("/api/storefront/checkout-sessions", {
       line_items: Object.entries(cart)
         .filter(([, n]) => n > 0)
         .map(([id, quantity]) => ({ item: { id }, quantity })),
@@ -169,7 +180,7 @@ function Browse() {
   async function refreshCart() {
     if (checkout)
       setCheckout(
-        await shop<Checkout>(`/ucp/v1/checkout-sessions/${checkout.id}`),
+        await shop<Checkout>(`/api/storefront/checkout-sessions/${checkout.id}`),
       );
   }
   return (
@@ -228,8 +239,9 @@ function Browse() {
               </article>
             ))}
           </div>
-          {!products.length && !error && (
-            <p>No online products are currently listed.</p>
+          {loading && <p role="status">Loading products…</p>}
+          {!loading && !products.length && !error && (
+            <p>{query ? "No products match your search. Try another name or SKU." : "No online products are currently listed."}</p>
           )}
         </section>
         <section className={s.card}>
@@ -283,12 +295,12 @@ function Browse() {
               <button
                 disabled={busy || !Object.values(cart).some((x) => x > 0)}
               >
-                Review checkout
+                {busy ? "Preparing checkout…" : "Review checkout"}
               </button>
             </form>
           ) : (
             <>
-              <p>Status: {checkout.status}</p>
+              <p role="status">Status: {checkout.status.replaceAll("_", " ")}</p>
               {checkout.line_items.map((l) => (
                 <p key={l.id}>
                   {l.item.title} × {l.quantity}{" "}
@@ -341,7 +353,7 @@ function Browse() {
                               void act(async () => {
                                 setOffer(
                                   await shop<Offer>(
-                                    `/ucp/v1/checkout-sessions/${checkout.id}/offers/${offer.offer_id}/accept`,
+                                    `/api/storefront/checkout-sessions/${checkout.id}/offers/${offer.offer_id}/accept`,
                                     {},
                                   ),
                                 );
@@ -361,7 +373,7 @@ function Browse() {
                               void act(async () => {
                                 setOffer(
                                   await shop<Offer>(
-                                    `/ucp/v1/checkout-sessions/${checkout.id}/offers/${offer.offer_id}/withdraw`,
+                                    `/api/storefront/checkout-sessions/${checkout.id}/offers/${offer.offer_id}/withdraw`,
                                     {},
                                   ),
                                 );
@@ -396,7 +408,7 @@ function Browse() {
                           void act(async () =>
                             setOffer(
                               await shop<Offer>(
-                                `/ucp/v1/checkout-sessions/${checkout.id}/offers`,
+                                `/api/storefront/checkout-sessions/${checkout.id}/offers`,
                                 {
                                   line_items: checkout.line_items.map((l) => ({
                                     id: l.id,
@@ -451,22 +463,22 @@ function Browse() {
                         void act(async () => {
                           setCheckout(
                             await shop<Checkout>(
-                              `/ucp/v1/checkout-sessions/${checkout.id}/complete`,
+                              `/api/storefront/checkout-sessions/${checkout.id}/complete`,
                               { payment_token: payment },
                             ),
                           );
-                          await load();
+                          setProducts(await load());
                         })
                       }
                     >
-                      Place test order
+                      {busy ? "Processing…" : "Place test order"}
                     </button>
                     <button
                       disabled={busy}
                       onClick={() =>
                         void act(async () => {
                           await shop(
-                            `/ucp/v1/checkout-sessions/${checkout.id}/cancel`,
+                            `/api/storefront/checkout-sessions/${checkout.id}/cancel`,
                             {},
                           );
                           setCheckout(null);
