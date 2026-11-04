@@ -1,0 +1,22 @@
+name: shelfiq-verification
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: retail
+      POSTGRES_PASSWORD: retail_test_only
+      POSTGRES_DB: retail_pricing_test
+    ports: ["127.0.0.1:15432:5432"]
+    volumes:
+      - ./postgres/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./postgres/02-shelfiq.sql:/docker-entrypoint-initdb.d/02-shelfiq.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retail -d retail_pricing_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    ports: ["127.0.0.1:11883:1883"]
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro

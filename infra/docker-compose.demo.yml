@@ -30,7 +30,9 @@ services:
   # tools/fake_publisher.py, run inside the API image, which already has
   # aiomqtt and asyncpg.
   fake-publisher:
-    build: ../services/dashboard-api
+    build:
+      context: ..
+      dockerfile: services/dashboard-api/Dockerfile
     container_name: rp-fake-publisher
     working_dir: /srv
     entrypoint: ["python", "tools/fake_publisher.py"]

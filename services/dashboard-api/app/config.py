@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     # this is what the running bridge does, and the two can differ until a
     # restart. Settings shows both.
     mqtt_tls: bool = False
+    mqtt_ca_file: str = ""
+    mqtt_cert_file: str = ""
+    mqtt_key_file: str = ""
+    mqtt_username: str = ""
+    mqtt_password: str = ""
 
     # Whether to connect to MQTT at all. The console is fully usable against
     # Postgres alone, which is how it runs before Layers 1-4 exist.
@@ -41,6 +46,10 @@ class Settings(BaseSettings):
     shelfiq_bootstrap_email: str = ""
     shelfiq_bootstrap_name: str = ""
     shelfiq_bootstrap_password: str = ""
+
+    commerce_agent_key: str = ""
+    commerce_webhook_key: str = ""
+    commerce_webhook_url: str = ""
 
     cors_origins: str = "http://localhost:5173"
 

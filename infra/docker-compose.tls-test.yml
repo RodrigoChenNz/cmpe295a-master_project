@@ -1,0 +1,9 @@
+name: shelfiq-tls-verification
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    ports: ["127.0.0.1:18884:8883"]
+    volumes:
+      - ../secrets/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ../secrets/acl:/mosquitto/config/acl:ro
+      - ../secrets/certs:/mosquitto/certs:ro

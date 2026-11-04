@@ -7,8 +7,8 @@ FROM node:20-alpine
 WORKDIR /srv
 
 # Manifest first, so editing a component does not reinstall node_modules.
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY . .
 

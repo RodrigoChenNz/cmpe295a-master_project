@@ -263,7 +263,7 @@ export function Settings() {
 
         <p className={s.cardSub}>
           {broker.connected
-            ? 'Approved prices are published here. No label acknowledges one, so the console reports what it sent, not what a shelf is showing.'
+            ? 'Approved prices are published here. Delivery is confirmed by a matching device render acknowledgement; emulated reports are identified separately.'
             : `Nothing has reached a shelf since the link dropped${broker.since ? ` ${relative(broker.since)}` : ''}. Approved prices are recorded and queued.`}
         </p>
 

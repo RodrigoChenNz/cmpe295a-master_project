@@ -1,0 +1,1 @@
+ALTER TABLE shap_vectors ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;

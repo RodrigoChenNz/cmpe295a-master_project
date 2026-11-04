@@ -50,4 +50,8 @@ edge/msp432/Release/
 *.out
 *.map
 
+# Local reproducible experiment outputs and emulator flash state
+artifacts/
+
+secrets/
 edge/**/config.py

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DecisionOutcome",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "product_id": {
+      "type": "string",
+      "pattern": "^SKU-[0-9]{3,}$"
+    },
+    "status": {
+      "enum": [
+        "auto_approved",
+        "approved",
+        "overridden",
+        "rejected",
+        "expired",
+        "superseded"
+      ]
+    },
+    "final_price": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01
+    },
+    "decided_by": {
+      "type": "string"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "decision_id",
+    "product_id",
+    "status",
+    "final_price",
+    "decided_by",
+    "ts"
+  ]
+}

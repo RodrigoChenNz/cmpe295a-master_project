@@ -27,7 +27,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`, {
@@ -208,6 +208,18 @@ export const api = {
     request<Page<Label> & { by_status: Record<string, number>; network: Meta['broker'] }>(
       `/api/labels${qs(p)}`,
     ),
+
+  registerLabel: (body: { label_id: string; kind: 'lcd' | 'eink' }) => post<{label_id: string}>('/api/labels', body),
+  systemStatus: () => request<{
+    counts: {queued: number; delivered: number; observations: number; confirmed_labels: number; emulated_labels: number; last_observation: string | null};
+    broker: {connected: boolean};
+    checked_at: string;
+    pipeline: {stage: string; last_seen: string | null; age_seconds: number | null; recent: boolean}[];
+    latest_pricing_model: string | null;
+    stale_after_seconds: number;
+    pricing_models: {agent_version: string; proposals: number}[];
+    forecast_models: {model_version: string; observations: number}[];
+  }>('/api/system'),
 
   labelDetail: (id: string) => request<LabelDetail>(`/api/labels/${id}`),
 

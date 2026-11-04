@@ -102,6 +102,20 @@ _publish_backlog: list[tuple[str, bytes, int, bool]] = []
 _BACKLOG_MAX = 500
 
 
+async def send_now(topic: str, payload: dict, *, qos=1, retain=False) -> bool:
+    """Attempt publication without a volatile fallback; durable worker owns retry."""
+    from retail.contracts import dumps
+    if _client is None:
+        return False
+    try:
+        await _client.publish(topic,dumps(payload).encode(),qos=qos,retain=retain)
+        _mark_traffic()
+        return True
+    except Exception:
+        log.exception('Broker publication failed')
+        return False
+
+
 async def publish(topic: str, payload: dict, *, qos: int = 1, retain: bool = False) -> bool:
     """Publish to MQTT. Returns True if it left the process.
 
@@ -176,7 +190,8 @@ async def run(stop: asyncio.Event) -> None:
         _broker_state.update(connected=False, enabled=False, error="aiomqtt not installed")
         return
 
-    from . import ingest
+    from . import ingest, db
+    from retail.mqtt import options
 
     backoff = 1.0
     while not stop.is_set():
@@ -184,12 +199,13 @@ async def run(stop: asyncio.Event) -> None:
             # TLS is wired rather than merely stored: a Settings switch that
             # edits a column the bridge ignores would claim an encrypted link
             # this service does not open.
-            tls_params = aiomqtt.TLSParameters() if settings.mqtt_tls else None
             async with aiomqtt.Client(
                 hostname=settings.mqtt_host,
                 port=settings.mqtt_port,
                 identifier=settings.mqtt_client_id,
-                tls_params=tls_params,
+                **options(tls=settings.mqtt_tls,cafile=settings.mqtt_ca_file or None,
+                    certfile=settings.mqtt_cert_file or None,keyfile=settings.mqtt_key_file or None,
+                    username=settings.mqtt_username or None,password=settings.mqtt_password or None),
             ) as client:
                 _client = client
                 backoff = 1.0
@@ -202,9 +218,15 @@ async def run(stop: asyncio.Event) -> None:
                 log.info("MQTT connected to %s:%s", settings.mqtt_host, settings.mqtt_port)
 
                 await _drain_backlog()
-                for topic in ("retail/proposal/+", "retail/explain/+", "retail/inventory/+"):
+                for topic in ("retail/proposal/+", "retail/explain/+", "retail/inventory/+", "retail/state/+", "retail/shelf/+"):
                     await client.subscribe(topic, qos=1)
 
+                # Retained policy snapshots also reach agents after broker restarts.
+                for product in await db.fetch("SELECT product_id,min_price,max_price,auto_approve_pct,policy_set_by FROM products WHERE min_price IS NOT NULL AND max_price IS NOT NULL"):
+                    await send_now(f"retail/guardrail/{product['product_id']}", dict(
+                        product_id=product['product_id'], min_price=float(product['min_price']), max_price=float(product['max_price']),
+                        auto_approve_pct=float(product['auto_approve_pct']) if product['auto_approve_pct'] is not None else None,
+                        set_by=product['policy_set_by'] or 'system',ts=datetime.now(timezone.utc).isoformat()),retain=True)
                 async for message in client.messages:
                     if stop.is_set():
                         break

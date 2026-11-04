@@ -5,7 +5,13 @@
   "description": "Published by the forecaster to retail/inventory/{product_id} on each forecast cycle. QoS 0, retained. Feeds both the dashboard dead-stock alert panel and the pricing agent's reward function.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["product_id", "dead_stock_risk", "predicted_sellby", "model_version", "ts"],
+  "required": [
+    "product_id",
+    "dead_stock_risk",
+    "predicted_sellby",
+    "model_version",
+    "ts"
+  ],
   "properties": {
     "product_id": {
       "type": "string",
@@ -34,6 +40,20 @@
     "ts": {
       "type": "string",
       "format": "date-time"
+    },
+    "state_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "forecast_daily": {
+      "type": "number",
+      "minimum": 0
+    },
+    "risk_kind": {
+      "enum": [
+        "heuristic_score",
+        "calibrated_probability"
+      ]
     }
   },
   "examples": [

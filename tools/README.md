@@ -1,3 +1,7 @@
+## Complete software tools
+
+`make software` runs the integrated workers. `make integration` runs isolated PostgreSQL/MQTT tests. `make smoke` signs in using the private `.env` account, publishes a correlated recommendation and explanation, approves it, and waits for its exact emulator render. `make validate` validates all schemas and examples. See [software guide](../docs/SOFTWARE.md) for prerequisites and TLS setup.
+
 # tools
 
 Developer scripts. Nothing here ships, and no service imports from here.

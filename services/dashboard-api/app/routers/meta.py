@@ -49,7 +49,7 @@ async def meta(
     levels = await db.fetch("SELECT depth, name FROM location_levels ORDER BY depth")
 
     broker = bus.broker_state()
-    broker["queued"] = bus.queued_count()
+    broker["queued"] = await db.fetchval("SELECT count(*) FROM message_outbox WHERE sent_at IS NULL")
 
     return {
         "user": user.as_dict() if user else None,

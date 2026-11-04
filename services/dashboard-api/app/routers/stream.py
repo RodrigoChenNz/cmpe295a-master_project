@@ -14,7 +14,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from .. import auth, bus
+from .. import auth, bus, db
 
 log = logging.getLogger("shelfiq.stream")
 router = APIRouter()
@@ -41,7 +41,7 @@ async def stream(ws: WebSocket) -> None:
             {
                 "type": "hello",
                 "user": user.username,
-                "broker": bus.broker_state() | {"queued": bus.queued_count()},
+                "broker": bus.broker_state() | {"queued": await db.fetchval("SELECT count(*) FROM message_outbox WHERE sent_at IS NULL")},
             }
         )
 

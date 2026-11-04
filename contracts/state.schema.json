@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StoreObservation",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "pattern": "^SKU-[0-9]{3,}$"
+    },
+    "state_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "unit_cost": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01
+    },
+    "current_price": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01
+    },
+    "competitor_price": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "multipleOf": 0.01
+    },
+    "units_on_hand": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000
+    },
+    "day_of_week": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6
+    },
+    "time_of_day_bucket": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "sales_history": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 365,
+      "items": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "source": {
+      "enum": [
+        "simulator",
+        "store"
+      ]
+    }
+  },
+  "required": [
+    "product_id",
+    "state_id",
+    "ts",
+    "unit_cost",
+    "current_price",
+    "competitor_price",
+    "units_on_hand",
+    "day_of_week",
+    "time_of_day_bucket",
+    "sales_history",
+    "source"
+  ]
+}

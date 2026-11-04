@@ -19,8 +19,8 @@ services:
     image: eclipse-mosquitto:2.0
     container_name: rp-mosquitto
     ports:
-      - "1883:1883"   # MQTT
-      - "9101:9001"   # MQTT over WebSocket (browser clients, MQTT Explorer).
+      - "127.0.0.1:1883:1883"   # MQTT
+      - "127.0.0.1:9101:9001"   # MQTT over WebSocket (browser clients, MQTT Explorer).
                       # Host side is 9101, not 9001: 9001 collides with Penpot
                       # and other common local stacks. Container side stays 9001.
     volumes:
@@ -42,7 +42,7 @@ services:
       POSTGRES_PASSWORD: retail_dev_only
       POSTGRES_DB: retail_pricing
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       # Applied in filename order on first start of an empty volume.
       # 01 mirrors contracts/ and needs all four approvals to change.
@@ -59,7 +59,9 @@ services:
       retries: 5
 
   dashboard-api:
-    build: ../services/dashboard-api
+    build:
+      context: ..
+      dockerfile: services/dashboard-api/Dockerfile
     container_name: rp-api
     environment:
       MQTT_HOST: mosquitto
@@ -72,7 +74,7 @@ services:
       # Plain http locally. Any deployment must set this true.
       SESSION_COOKIE_SECURE: "false"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
       mosquitto: { condition: service_healthy }
       postgres:  { condition: service_healthy }
@@ -84,8 +86,8 @@ services:
     environment:
       # The browser resolves these, not the container, so they are localhost
       # even though the API is reachable as `dashboard-api` on this network.
-      VITE_API_URL: http://localhost:8000
-      VITE_WS_URL: ws://localhost:8000/ws/stream
+      VITE_API_URL: http://localhost:${API_PORT:-8000}
+      VITE_WS_URL: ws://localhost:${API_PORT:-8000}/ws/stream
     volumes:
       # The source, bind-mounted, so the dev server actually hot reloads. The
       # image COPYs src too, which is what makes it runnable standalone — but
@@ -98,7 +100,7 @@ services:
       # may have none, or have them built for a different platform.
       - /srv/node_modules
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     depends_on:
       - dashboard-api
     restart: unless-stopped

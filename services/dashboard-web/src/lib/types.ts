@@ -314,6 +314,10 @@ export interface ApproveResult {
 /* ── Labels ───────────────────────────────────────────────────────────── */
 
 export interface Label {
+  emulated?: boolean;
+  rendered_at?: string | null;
+  rendered_line1?: string | null;
+  rendered_line2?: string | null;
   label_id: string;
   kind: LabelKind;
   product_id?: string | null;

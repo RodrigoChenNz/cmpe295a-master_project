@@ -22,10 +22,10 @@ _pool: asyncpg.Pool | None = None
 async def _init_connection(conn: asyncpg.Connection) -> None:
     # asyncpg hands back JSONB as a string unless told otherwise.
     await conn.set_type_codec(
-        "jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
+        "jsonb", encoder=lambda v: json.dumps(v, default=lambda x: float(x) if isinstance(x, Decimal) else str(x)), decoder=json.loads, schema="pg_catalog"
     )
     await conn.set_type_codec(
-        "json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
+        "json", encoder=lambda v: json.dumps(v, default=lambda x: float(x) if isinstance(x, Decimal) else str(x)), decoder=json.loads, schema="pg_catalog"
     )
 
 
