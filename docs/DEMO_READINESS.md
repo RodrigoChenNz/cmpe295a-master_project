@@ -1,6 +1,6 @@
 # End to end demo readiness
 
-Status checked on November 3, 2026. The pricing software demo passes live acceptance. The local commerce demo now includes checkout, negotiation, fulfillment, procurement, inventory, accounting and nightly reviews; see COMMERCE.md for its acceptance flow and protocol boundary. Physical-device integration and public UCP interoperability remain incomplete. Main remains unchanged.
+Status checked on November 4, 2026. The pricing software demo passes live acceptance. The local commerce demo now includes checkout, negotiation, fulfillment, procurement, inventory, accounting and nightly reviews; see COMMERCE.md for its acceptance flow and protocol boundary. Signed UCP commerce and HTTPS deployment are tested locally; physical acceptance and actual public hosting/external-platform acceptance remain pending. Main remains unchanged.
 
 ## What is working
 
@@ -8,8 +8,8 @@ Status checked on November 3, 2026. The pricing software demo passes live accept
 - Rule, DQN and DDPG pricing interfaces, price explanations and manager approval or delegation.
 - Transactional price history and delivery jobs, MQTT with mutual TLS, persistent emulator state and matching render acknowledgements.
 - Console, role checks, current pipeline activity, label registration and pairing, audit history, additive migrations and failure recovery.
-- Local verification: the commerce expansion adds transaction and protocol tests; see the latest verification evidence. The earlier pricing-only baseline had 38 passing tests, frontend typecheck/build pass, contracts and critical Python lint pass. The build has a bundle-size advisory.
-- Live `make ready` passed: recent activity at all four stages, configured DQN selected, no pending deliveries, and a confirmed emulator render. One observed round trip took 0.259 seconds; this is not a latency benchmark or a physical-display result.
+- Local verification: 63 tests passed, including database integration, MQTT TLS permissions and signed UCP contracts. Frontend typecheck/build, contract validation, vendored-schema integrity and critical Python lint pass. The build retains a bundle-size advisory.
+- Live `make ready` passed: recent activity at all four stages, configured DQN selected, no pending deliveries, and a confirmed emulator render. One observed round trip took 0.316 seconds; this is not a latency benchmark or a physical-display result.
 
 The prior GitHub CI checks on PR #6 passed. The updated workflow also runs the TLS permission tests rather than skipping them. Confirm its latest revision is green before team integration.
 
@@ -35,7 +35,13 @@ Do not use an emulator confirmation or a broker publish as proof that a physical
 
 The local implementation now provides the feature flows proposed in PR #3: a unified decisions inbox, nightly orchestration and checkpoint pricing jobs with explicit feedback shaping, market observations, public test storefront, orders, owner-reviewed bulk deals, simulated supplier procurement and partial receiving, inventory movements, accounting and signed order notifications. `make commerce-ready` verifies these together against the running stack. Read [COMMERCE.md](COMMERCE.md) for exact startup commands, demonstration steps and limitations.
 
-The `/ucp/v1` routes are an explicitly local development binding. Full public UCP schema/capability interoperability, namespace hosting and deployment acceptance are still separate unfinished work. Test payments and simulated supplier orders are not real transactions. Feedback shaping does not claim checkpoint retraining, and the synthetic churn proxy remains unvalidated on real customers.
+The browser uses `/api/storefront/*`. The separate `/ucp/v1/*` binding validates
+pinned official schemas, negotiates signed platform profiles and supplies
+catalog, checkout, fulfillment and order flows. `make ucp-ready` verifies the
+isolated TLS 1.3 deployment. Read [DEPLOYMENT.md](DEPLOYMENT.md) for commands,
+prepared public deployment and explicit compatibility limits. No domain/hosting
+has been provisioned. Test payments and simulated supplier orders remain
+synthetic. Feedback shaping does not claim checkpoint retraining.
 
 ## Team integration
 

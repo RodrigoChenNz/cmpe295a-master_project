@@ -134,3 +134,33 @@ commerce-keys: ## Configure a private signing key for the local order notificati
 	$(PYTHON) tools/setup_commerce.py
 
 .PHONY: commerce-keys commerce-ready ready
+
+HTTPS_TEST := docker compose --env-file .env.deploy.local -f infra/docker-compose.deploy.yml -f infra/docker-compose.https-test.yml
+
+https-keys: ## Generate private signing keys and isolated local HTTPS configuration
+	$(PYTHON) tools/setup_ucp.py
+
+https-test: ## Build the isolated HTTPS storefront and signed public API
+	$(HTTPS_TEST) up -d --build --wait
+
+ucp-ready: ## Verify signed UCP commerce through certificate-validated TLS 1.3
+	$(PYTHON) tools/ucp_ready.py
+
+https-down: ## Stop only the isolated HTTPS stack and preserve its data
+	$(HTTPS_TEST) down
+
+.PHONY: https-keys https-test ucp-ready https-down
+
+public-demo: ## Publish the isolated synthetic demo through free temporary tunnels
+	$(PYTHON) tools/public_demo.py start
+
+public-demo-status: ## Print current public demo URLs and running state
+	$(PYTHON) tools/public_demo.py status
+
+public-demo-ready: ## Verify public buyer flows; staff credentials remain on localhost
+	$(PYTHON) tools/public_demo_ready.py
+
+public-demo-stop: ## Close both public tunnels and preserve local demo data
+	$(PYTHON) tools/public_demo.py stop
+
+.PHONY: public-demo public-demo-status public-demo-ready public-demo-stop

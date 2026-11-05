@@ -19,6 +19,8 @@ from fastapi.responses import JSONResponse
 
 from . import auth, bus, db, ingest, migrations, outbox
 from .config import settings
+from .ucp.router import router as ucp_router
+from .ucp.middleware import UCPMiddleware
 from .commerce import (
     admin as commerce_admin,
     agent as commerce_agent,
@@ -122,6 +124,8 @@ async def _ensure_singletons() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from .ucp.profiles import check_configuration
+    check_configuration()
     await db.connect()
     await migrations.apply()
     await _check_schema()
@@ -159,6 +163,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(UCPMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -172,6 +177,7 @@ app.add_middleware(
 )
 
 for r in (
+    ucp_router,
     commerce_admin.router,
     commerce_agent.router,
     catalog.router,

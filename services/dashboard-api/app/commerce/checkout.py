@@ -9,7 +9,7 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
 from .. import db, bus
 from .common import (
@@ -52,6 +52,7 @@ class Fulfillment(Model):
 
 
 class Cart(Model):
+    _ucp_context: dict | None = PrivateAttr(default=None)
     line_items: list[CartLine] = Field(min_length=1, max_length=100)
     buyer: Buyer | None = None
     fulfillment: Fulfillment | None = None
@@ -123,6 +124,8 @@ async def quote(conn, cart, sid):
         "payment": {"handler": "shelfiq_local_test", "test_only": True},
         "messages": [],
     }
+    if cart.get("ucp_context"):
+        payload["_ucp"] = cart["ucp_context"]
     if not payload["buyer"]:
         payload["messages"].append(
             {
@@ -172,15 +175,16 @@ async def totals(conn, payload):
     ]
 
 
-@router.post("/ucp/v1/checkout-sessions")
+@router.post("/api/storefront/checkout-sessions")
 async def create_cart(body: Cart, request: Request):
     owner = buyer(request)
+    cart_data = {**body.model_dump(), "ucp_context": body._ucp_context}
     async with db.pool().acquire() as conn, conn.transaction():
         await enabled(conn)
 
         async def create():
             sid = uuid4()
-            payload = await quote(conn, body.model_dump(), sid)
+            payload = await quote(conn, cart_data, sid)
             expiry = await conn.fetchval(
                 """INSERT INTO checkout_sessions(checkout_id,owner_hash,status,payload)
                 VALUES($1,$2,$3,$4) RETURNING expires_at""",
@@ -193,12 +197,20 @@ async def create_cart(body: Cart, request: Request):
             await conn.execute(
                 "UPDATE checkout_sessions SET payload=$2 WHERE checkout_id=$1", sid, payload
             )
+            if body._ucp_context:
+                await conn.execute(
+                    "INSERT INTO ucp_sessions(checkout_id,profile_url,capabilities,context) VALUES($1,$2,$3,$4)",
+                    sid,
+                    body._ucp_context["profile_url"],
+                    body._ucp_context["capabilities"],
+                    body._ucp_context,
+                )
             return payload
 
-        return await once(conn, request, owner, body.model_dump(), create)
+        return await once(conn, request, owner, cart_data, create)
 
 
-@router.get("/ucp/v1/checkout-sessions/{sid}")
+@router.get("/api/storefront/checkout-sessions/{sid}")
 async def get_cart(sid: UUID, request: Request):
     async with db.pool().acquire() as conn:
         row = await lock_session(conn, sid, buyer(request), active=False)
@@ -222,9 +234,10 @@ async def get_cart(sid: UUID, request: Request):
         return result
 
 
-@router.put("/ucp/v1/checkout-sessions/{sid}")
+@router.put("/api/storefront/checkout-sessions/{sid}")
 async def update_cart(sid: UUID, body: Cart, request: Request):
     owner = buyer(request)
+    cart_data = {**body.model_dump(), "ucp_context": body._ucp_context}
     async with db.pool().acquire() as conn, conn.transaction():
         await enabled(conn)
 
@@ -237,7 +250,7 @@ async def update_cart(sid: UUID, body: Cart, request: Request):
                 raise HTTPException(
                     409, "Withdraw the active offer before replacing this cart."
                 )
-            payload = await quote(conn, body.model_dump(), sid)
+            payload = await quote(conn, cart_data, sid)
             payload["expires_at"] = row["expires_at"].isoformat()
             await conn.execute(
                 "UPDATE checkout_sessions SET payload=$2,status=$3,updated_at=now() WHERE checkout_id=$1",
@@ -247,10 +260,10 @@ async def update_cart(sid: UUID, body: Cart, request: Request):
             )
             return payload
 
-        return await once(conn, request, owner, body.model_dump(), update)
+        return await once(conn, request, owner, cart_data, update)
 
 
-@router.post("/ucp/v1/checkout-sessions/{sid}/cancel")
+@router.post("/api/storefront/checkout-sessions/{sid}/cancel")
 async def cancel_cart(sid: UUID, request: Request):
     owner = buyer(request)
     async with db.pool().acquire() as conn, conn.transaction():
@@ -277,7 +290,7 @@ async def cancel_cart(sid: UUID, request: Request):
         return await once(conn, request, owner, {}, cancel)
 
 
-@router.post("/ucp/v1/checkout-sessions/{sid}/complete")
+@router.post("/api/storefront/checkout-sessions/{sid}/complete")
 async def complete_cart(sid: UUID, body: Complete, request: Request):
     owner = buyer(request)
     async with db.pool().acquire() as conn, conn.transaction():
@@ -421,12 +434,13 @@ async def complete_cart(sid: UUID, body: Complete, request: Request):
 
 def buyer_order(payload):
     result = wire(payload)
+    result.pop("_ucp", None)
     for line in result["line_items"]:
         line.pop("unit_cost_minor", None)
     return result
 
 
-@router.get("/ucp/v1/orders/{oid}")
+@router.get("/api/storefront/orders/{oid}")
 async def get_order(oid: UUID, request: Request):
     row = await db.fetchrow(
         "SELECT * FROM orders WHERE order_id=$1 AND owner_hash=$2", oid, buyer(request)

@@ -1,0 +1,19 @@
+# Deliberately isolated synthetic deployment, bound to loopback only.
+name: shelfiq-https-test
+services:
+  postgres:
+    volumes:
+      - ./postgres/03-seed.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
+  api:
+    environment:
+      UCP_PUBLIC_MODE: 'false'
+      UCP_REQUIRE_SIGNATURES: 'true'
+      UCP_PLATFORM_KEY_FILE: /srv/ucp/platform.pem
+    volumes:
+      - ../secrets/ucp/platform.pem:/srv/ucp/platform.pem:ro
+  gateway:
+    ports: !override ['127.0.0.1:8443:8443']
+    volumes:
+      - ./deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - ../secrets/ucp/server.pem:/certs/server.pem:ro
+      - ../secrets/ucp/server.key:/certs/server.key:ro

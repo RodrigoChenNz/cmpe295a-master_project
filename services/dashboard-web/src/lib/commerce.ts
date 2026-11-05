@@ -28,6 +28,7 @@ export interface Checkout {
   expires_at: string;
 }
 export interface Order {
+  adjustments?: { id: string; description: string; totals: {type: string; amount: number}[] }[];
   id: string;
   status: string;
   line_items: Line[];

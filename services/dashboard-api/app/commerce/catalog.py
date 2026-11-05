@@ -38,6 +38,8 @@ def product(row, base):
             {
                 "id": row["product_id"],
                 "sku": row["sku"] or row["product_id"],
+                "title": row["name"],
+                "description": {"plain": row["description"]},
                 "price": price,
                 "availability": {"available": (row["stock_on_hand"] or 0) > 0},
             }
@@ -49,7 +51,7 @@ QUERY = """SELECT p.*,(SELECT price FROM price_history WHERE product_id=p.produc
  FROM products p WHERE online AND archived_at IS NULL"""
 
 
-@router.get("/.well-known/ucp")
+@router.get("/api/storefront/profile")
 async def discovery(request: Request):
     # Local development binding. No third-party certification, live payment or
     # authenticated platform profile discovery is advertised by this profile.
@@ -98,7 +100,7 @@ async def discovery(request: Request):
     }
 
 
-@router.post("/ucp/v1/catalog/search")
+@router.post("/api/storefront/catalog/search")
 async def search(body: Search, request: Request):
     cursor = body.pagination.cursor or ""
     async with db.pool().acquire() as conn:
@@ -127,7 +129,7 @@ async def search(body: Search, request: Request):
     }
 
 
-@router.post("/ucp/v1/catalog/lookup")
+@router.post("/api/storefront/catalog/lookup")
 async def lookup(body: Lookup, request: Request):
     async with db.pool().acquire() as conn:
         await enabled(conn)

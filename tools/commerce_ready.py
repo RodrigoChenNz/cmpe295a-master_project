@@ -99,14 +99,14 @@ def check(args):
                     "note": "Demo replenishment for commerce acceptance test",
                 },
             )
-        catalogue = call("POST", "/ucp/v1/catalog/search", {}, buyer=True)
+        catalogue = call("POST", "/api/storefront/catalog/search", {}, buyer=True)
         assert any(p["id"] == pid for p in catalogue["products"])
         evidence["checks"].append(
             {"name": "public_catalogue", "pass": True, "product_id": pid}
         )
         checkout = call(
             "POST",
-            "/ucp/v1/checkout-sessions",
+            "/api/storefront/checkout-sessions",
             {
                 "line_items": [{"item": {"id": pid}, "quantity": 5}],
                 "buyer": {"email": "demo-buyer@example.test"},
@@ -119,7 +119,7 @@ def check(args):
         price = checkout["line_items"][0]["item"]["price"]
         offer = call(
             "POST",
-            f"/ucp/v1/checkout-sessions/{sid}/offers",
+            f"/api/storefront/checkout-sessions/{sid}/offers",
             {
                 "line_items": [
                     {
@@ -144,7 +144,7 @@ def check(args):
             )
         paid = call(
             "POST",
-            f"/ucp/v1/checkout-sessions/{sid}/complete",
+            f"/api/storefront/checkout-sessions/{sid}/complete",
             {"payment_token": "test_approved"},
             buyer=True,
         )
@@ -169,7 +169,7 @@ def check(args):
                 f"/api/orders/{oid}/events",
                 {"type": kind, "line_items": [{"id": pid, "quantity": n}]},
             )
-        order = call("GET", "/ucp/v1/orders/" + oid, buyer=True)
+        order = call("GET", "/api/storefront/orders/" + oid, buyer=True)
         assert order["line_items"][0]["returned"] == 1
         assert order["line_items"][0]["canceled"] == 2
         evidence["checks"].append(
