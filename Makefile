@@ -150,3 +150,17 @@ https-down: ## Stop only the isolated HTTPS stack and preserve its data
 	$(HTTPS_TEST) down
 
 .PHONY: https-keys https-test ucp-ready https-down
+
+public-demo: ## Publish the isolated synthetic demo through free temporary tunnels
+	$(PYTHON) tools/public_demo.py start
+
+public-demo-status: ## Print current public demo URLs and running state
+	$(PYTHON) tools/public_demo.py status
+
+public-demo-ready: ## Verify public buyer flows; staff credentials remain on localhost
+	$(PYTHON) tools/public_demo_ready.py
+
+public-demo-stop: ## Close both public tunnels and preserve local demo data
+	$(PYTHON) tools/public_demo.py stop
+
+.PHONY: public-demo public-demo-status public-demo-ready public-demo-stop

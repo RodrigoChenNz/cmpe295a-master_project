@@ -1,0 +1,45 @@
+# Layer after deploy.yml and https-test.yml; only synthetic HTTPS-test data is used.
+name: shelfiq-https-test
+services:
+  api:
+    environment:
+      UCP_PUBLIC_MODE: ${PUBLIC_DEMO_READY:-false}
+      UCP_PLATFORM_KEY_FILE: ''
+    volumes: !override
+      - ../secrets/certs:/srv/certs:ro
+      - ../secrets/ucp/business.pem:/srv/ucp/business.pem:ro
+  gateway:
+    volumes:
+      - ./deploy/Caddyfile.demo:/etc/caddy/Caddyfile:ro
+  tunnel:
+    image: &cloudflared cloudflare/cloudflared@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+    command: [tunnel, --no-autoupdate, --url, 'https://gateway:8443', --origin-server-name, localhost, --origin-ca-pool, /certs/ca.pem]
+    volumes: [../secrets/ucp/ca.pem:/certs/ca.pem:ro]
+    depends_on:
+      gateway: {condition: service_started}
+    restart: 'no'
+  platform:
+    build:
+      context: ..
+      dockerfile: services/dashboard-api/Dockerfile
+    user: '${RUN_UID}:${RUN_GID}'
+    command: [uvicorn, demo_platform:app, --host, 0.0.0.0, --port, '8001']
+    environment:
+      DEMO_MERCHANT_URL: ${PUBLIC_URL}
+      DEMO_PLATFORM_URL: ${PLATFORM_URL:-https://platform.shelfiq.test}
+      DEMO_RECEIVER_TOKEN: ${DEMO_RECEIVER_TOKEN:?Generate the private receiver inspection token}
+    volumes:
+      - ../tools/demo_platform.py:/srv/demo_platform.py:ro
+      - ../secrets/ucp/platform.pem:/srv/platform.pem:ro
+      - ../secrets/ucp/demo-receipts:/srv/receipts
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8001/health',timeout=4)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  platform-tunnel:
+    image: *cloudflared
+    command: [tunnel, --no-autoupdate, --url, 'http://platform:8001']
+    depends_on:
+      platform: {condition: service_healthy}
+    restart: 'no'

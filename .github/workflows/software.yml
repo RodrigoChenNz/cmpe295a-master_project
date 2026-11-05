@@ -17,7 +17,7 @@ jobs:
       - run: python -m pip install -e '.[dev]' ruff
       - run: python tools/validate_contracts.py
       - run: python tools/validate_ucp_vendor.py
-      - run: ruff check --select F,E9 retail tests services/dashboard-api/app tools/setup_ucp.py tools/ucp_ready.py tools/validate_ucp_vendor.py tools/setup_commerce.py tools/commerce_ready.py tools/ready.py tools/smoke.py tools/setup_tls.py tools/validate_contracts.py
+      - run: ruff check --select F,E9 retail tests services/dashboard-api/app tools/demo_platform.py tools/public_demo.py tools/public_demo_ready.py tools/setup_ucp.py tools/ucp_ready.py tools/validate_ucp_vendor.py tools/setup_commerce.py tools/commerce_ready.py tools/ready.py tools/smoke.py tools/setup_tls.py tools/validate_contracts.py
       - run: docker compose -f infra/docker-compose.verify.yml up -d --wait
       - run: python tools/setup_tls.py
       - run: docker compose -f infra/docker-compose.tls-test.yml up -d

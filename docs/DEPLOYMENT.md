@@ -1,8 +1,10 @@
 # HTTPS deployment and UCP acceptance
 
-The deployment is prepared and tested locally. No public domain, DNS record,
-cloud resource or public storefront has been created. Hardware remains a
-separate acceptance task. All payments and supplier purchases remain simulated.
+The permanent deployment is prepared and tested locally. A free temporary
+public demonstration is available through the setup in [PUBLIC_DEMO.md](PUBLIC_DEMO.md).
+No domain has been purchased and no paid cloud resource has been created.
+Hardware remains a separate acceptance task. Payments and supplier purchases
+remain simulated.
 
 ## Run the isolated HTTPS acceptance stack
 

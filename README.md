@@ -153,3 +153,5 @@ let them lapse.
 ## Local commerce demonstration
 
 The feature branch includes a test storefront, unified approvals, nightly model jobs, orders and negotiation, simulated supplier procurement, inventory and accounting ledgers, and signed order notifications. See [the commerce runbook](docs/COMMERCE.md) for startup, acceptance commands and [HTTPS/UCP deployment setup](docs/DEPLOYMENT.md). Main and the shared report remain unchanged.
+
+For a free temporary public storefront and a separate signed test-platform receiver, see [PUBLIC_DEMO.md](docs/PUBLIC_DEMO.md). Exact public-network and upstream SDK results, including limitations, are in [EXTERNAL_ACCEPTANCE.md](docs/EXTERNAL_ACCEPTANCE.md).
