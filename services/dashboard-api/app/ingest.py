@@ -7,7 +7,7 @@ from decimal import Decimal
 from fastapi import HTTPException
 from jsonschema import ValidationError
 from retail.contracts import loads, validate
-from . import bus, db, decisions
+from . import bus, db, decisions, labels_in
 
 log = logging.getLogger("shelfiq.ingest")
 
@@ -20,6 +20,10 @@ def _when(value):
 
 
 async def handle(topic, raw):
+    # Console-owned label topics (not contracts, like blink): only the console
+    # and the edge (tools/lora_bridge.py) read them.
+    if topic.startswith("retail/label/"):
+        return await _label_topic(topic, raw)
     try:
         p = loads(raw)
         family = topic.split("/")[1]
@@ -41,6 +45,28 @@ async def handle(topic, raw):
         }[family](p)
         return True
     except (ValueError, TypeError, KeyError, ValidationError) as exc:
+        log.warning("Rejected %s: %s", topic, exc)
+        return False
+    except Exception:
+        log.exception("Ingestion failed on %s", topic)
+        return False
+
+
+async def _label_topic(topic, raw):
+    try:
+        if topic.endswith("/config"):
+            # A retained label config, replayed when this service connects (and
+            # echoed when it publishes one). Before parsing: empty is a deletion.
+            await labels_in.config_seen(topic.split("/")[2], raw)
+            return True
+        if topic == "retail/label/discovered":
+            p = loads(raw)
+            if not isinstance(p, dict):
+                raise ValueError("Payload must be an object")
+            await labels_in.discovered(p)
+            return True
+        return False
+    except (ValueError, TypeError, KeyError) as exc:
         log.warning("Rejected %s: %s", topic, exc)
         return False
     except Exception:
@@ -233,6 +259,12 @@ async def _state(p, conn=None):
 
 
 async def _shelf(p):
+    # contracts/shelf.schema.json accepts two shapes. A ShelfReport (in_sync,
+    # from the e-ink LoRa bridge) goes to labels_in; a ShelfObservation (event +
+    # publication_id, from the emulator) is checked against the exact push here.
+    if "in_sync" in p:
+        await labels_in.shelf_report(p["label_id"], p)
+        return
     async with db.pool().acquire() as conn:
         async with conn.transaction():
             label = await conn.fetchrow(
@@ -331,7 +363,8 @@ async def mark_stale_labels():
     rows = await db.fetch(
         """UPDATE shelf_labels SET status='offline' WHERE product_id IS NOT NULL
         AND status<>'offline' AND (last_seen_at IS NULL OR last_seen_at<now()-make_interval(secs=>$1)) RETURNING label_id""",
-        float(window or 900),
+        # E-ink labels check in every 30 minutes; 75 forgives one missed check-in.
+        float(window or 4500),
     )
     if rows:
         bus.emit("labels", changed=[r["label_id"] for r in rows])

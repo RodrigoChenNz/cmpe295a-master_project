@@ -19,7 +19,7 @@ endif
 COMPOSE_ALL := $(BASE) $(DEMO_FILE)
 
 .DEFAULT_GOAL := help
-.PHONY: help up demo fresh fresh-demo down restart logs ps nuke psql tap smoke fake validate seed env
+.PHONY: help up demo fresh fresh-demo down restart logs ps nuke psql tap smoke fake validate seed env lora reset-labels
 
 help: ## Show this help
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -27,10 +27,16 @@ help: ## Show this help
 env: ## Create .env from .env.example if it does not exist yet
 	@test -f .env || { cp .env.example .env; echo "created .env from .env.example"; }
 
-up: env ## Start the real stack on an empty database (DEMO=1 for sample data)
+up: env ## Start the real stack on an empty database (DEMO=1 sample data, LORA=1 e-ink bridge)
 	@# --remove-orphans stops the fake publisher when switching back from demo.
 	$(COMPOSE) up -d --build --remove-orphans
 	@$(COMPOSE) ps
+	@# LORA=1 passes through demo, fresh and fresh-demo too, since they all end here.
+	@# The stack stays up in the background; Ctrl-C stops only the bridge.
+ifeq ($(LORA),1)
+	@echo "Stack is up. Starting the LoRa bridge (Ctrl-C stops the bridge only; 'make down' stops the stack)."
+	@$(MAKE) --no-print-directory lora
+endif
 
 demo: ## Start the stack with sample data and the fake publisher (Layers 1-4)
 	@$(MAKE) --no-print-directory up DEMO=1
@@ -81,6 +87,23 @@ tap: ## Print every message on the retail/ topic tree
 
 fake: ## Follow the fake publisher's output (it runs by itself under `make demo`)
 	$(COMPOSE_ALL) logs -f fake-publisher
+
+# On the host, not in compose: Docker Desktop on macOS cannot pass a USB serial
+# device into a container. See edge/lora-gateway/README.md.
+lora: ## Link the LoRa gateway (USB) to the broker, for the e-ink labels
+	uv run --with aiomqtt --with pyserial tools/lora_bridge.py
+
+# Unlinks every tag in the database and deletes every retained assignment on the
+# broker. Labels, products and prices stay. With `make lora` running, each tag
+# shows "Not set up" within seconds; otherwise at its next check-in after the
+# bridge starts. Then set them up again with Shelf labels > Add labels.
+reset-labels: ## Send every e-ink tag back to "Not set up" (labels and prices stay)
+	@$(COMPOSE_ALL) exec -T postgres psql -U retail -d retail_pricing -qc \
+		"UPDATE shelf_labels SET device_id = NULL WHERE device_id IS NOT NULL"
+	@for t in $$($(COMPOSE_ALL) exec -T mosquitto mosquitto_sub -t 'retail/label/+/config' -W 1 -F '%t' 2>/dev/null); do \
+		$(COMPOSE_ALL) exec -T mosquitto mosquitto_pub -r -n -t "$$t" && echo "cleared $$t"; \
+	done
+	@echo "Every tag goes back to \"Not set up\" at its next check-in while make lora runs."
 
 validate: ## Validate schemas and example payloads
 	$(PYTHON) tools/validate_contracts.py

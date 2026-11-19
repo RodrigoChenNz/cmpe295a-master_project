@@ -70,7 +70,7 @@ export function Onboarding({
   const [type, setType] = useState<StoreType | null>(null);
   const [profile, setProfile] = useState({ store_name: '', store_code: '', timezone: '' });
   // Not asked for here, but PUT /api/settings/store takes the whole row.
-  const [staleSecs, setStaleSecs] = useState(900);
+  const [staleSecs, setStaleSecs] = useState(4500);
 
   const [levels, setLevels] = useState<{ names: string[]; depthLocked: boolean } | null>(null);
 
@@ -108,7 +108,7 @@ export function Onboarding({
           store_code: store?.store_code ?? '',
           timezone: store?.store_name ? store.timezone : browserTimezone(store?.timezone),
         });
-        setStaleSecs(store?.label_stale_secs ?? 900);
+        setStaleSecs(store?.label_stale_secs ?? 4500);
         setLevels(lv.configured ? { names: lv.levels.map((l) => l.name), depthLocked: lv.depth_locked } : null);
         const saved = cats.categories.map((c) => c.name);
         setCategoriesSaved(saved.length > 0);

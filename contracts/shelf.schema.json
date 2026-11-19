@@ -1,101 +1,201 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ShelfObservation",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "label_id": {
-      "type": "string",
-      "pattern": "^SHLF-[0-9]{3,}$"
-    },
-    "product_id": {
-      "type": "string",
-      "pattern": "^SKU-[0-9]{3,}$"
-    },
-    "event": {
-      "enum": [
-        "rendered",
-        "heartbeat"
-      ]
-    },
-    "publication_id": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "minimum": 1
-    },
-    "price": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "multipleOf": 0.01
-    },
-    "line1": {
-      "type": "string",
-      "maxLength": 16
-    },
-    "line2": {
-      "type": "string",
-      "maxLength": 16
-    },
-    "rendered_at": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "ts": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "firmware": {
-      "type": "string",
-      "maxLength": 80
-    },
-    "rssi": {
-      "type": "integer",
-      "minimum": -120,
-      "maximum": 0
-    },
-    "battery": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 100
-    },
-    "emulated": {
-      "type": "boolean"
-    }
-  },
-  "required": [
-    "label_id",
-    "product_id",
-    "event",
-    "ts",
-    "firmware",
-    "emulated"
+  "$id": "https://sjsu.edu/cmpe295/contracts/shelf.schema.json",
+  "title": "ShelfMessage",
+  "description": "DRAFT, needs all four signatures. What a shelf label shows, and how it is. Published to retail/shelf/{label_id} by the edge each time a label reports. QoS 1, not retained: a retained sighting would replay to a reconnecting dashboard as if the label had just been seen. Subscribed to by dashboard-api. Two shapes are accepted until the team settles on one: a ShelfObservation (the device emulator: acknowledges one exact publication) or a ShelfReport (the e-ink LoRa bridge: reports whether the glass shows the current price at each check-in). dashboard-api tells them apart by `in_sync`.",
+  "oneOf": [
+    { "$ref": "#/$defs/ShelfObservation" },
+    { "$ref": "#/$defs/ShelfReport" }
   ],
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "event": {
-            "const": "rendered"
-          }
+  "$defs": {
+    "ShelfObservation": {
+      "title": "ShelfObservation",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label_id": {
+          "type": "string",
+          "pattern": "^SHLF-[0-9]{3,}$"
+        },
+        "product_id": {
+          "type": "string",
+          "pattern": "^SKU-[0-9]{3,}$"
+        },
+        "event": {
+          "enum": [
+            "rendered",
+            "heartbeat"
+          ]
+        },
+        "publication_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "multipleOf": 0.01
+        },
+        "line1": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "line2": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "rendered_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "firmware": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "rssi": {
+          "type": "integer",
+          "minimum": -120,
+          "maximum": 0
+        },
+        "battery": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "emulated": {
+          "type": "boolean"
         }
       },
-      "then": {
-        "required": [
-          "publication_id",
-          "price",
-          "line1",
-          "line2",
-          "rendered_at"
-        ],
-        "properties": {
-          "publication_id": {
-            "type": "integer",
-            "minimum": 1
+      "required": [
+        "label_id",
+        "product_id",
+        "event",
+        "ts",
+        "firmware",
+        "emulated"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "event": {
+                "const": "rendered"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "publication_id",
+              "price",
+              "line1",
+              "line2",
+              "rendered_at"
+            ],
+            "properties": {
+              "publication_id": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
           }
         }
+      ]
+    },
+    "ShelfReport": {
+      "title": "ShelfReport",
+      "description": "Published by tools/lora_bridge.py for each check-in of a set-up e-ink label.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label_id", "in_sync", "ts"],
+      "properties": {
+        "label_id": {
+          "type": "string",
+          "pattern": "^SHLF-[0-9]{3,}$",
+          "description": "Must equal the {label_id} segment of the topic it is published on."
+        },
+        "product_id": {
+          "type": ["string", "null"],
+          "pattern": "^SKU-[0-9]{3,}$",
+          "description": "The product the label is assigned to, or null if none."
+        },
+        "price": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0,
+          "multipleOf": 0.01,
+          "description": "The price on the glass, or null if it shows none or the edge cannot tell which. Two decimal places. Consumers must parse as decimal, never float."
+        },
+        "decision_id": {
+          "type": ["string", "null"],
+          "format": "uuid",
+          "description": "The decision behind the price on the glass, from the PriceUpdate the edge delivered. Null for a manager-set price with no proposal, or when the edge does not know it."
+        },
+        "in_sync": {
+          "type": "boolean",
+          "description": "The glass shows the current retained retail/price/{product_id}."
+        },
+        "rendered_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "UTC ISO-8601. The first check-in at which the label reported showing this price. Accurate to the check-in interval: a sleeping label cannot report sooner."
+        },
+        "rssi_dbm": {
+          "type": ["integer", "null"],
+          "minimum": -120,
+          "maximum": 0,
+          "description": "How strongly the edge heard the label."
+        },
+        "battery_pct": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Estimated from battery voltage on a LiPo curve, so about plus or minus 10. Null when unknown, for example while the label runs on USB."
+        },
+        "firmware": {
+          "type": ["string", "null"],
+          "description": "The label firmware, e.g. \"e213-4\"."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC ISO-8601. When the edge heard this check-in."
+        }
       }
+    }
+  },
+  "examples": [
+    {
+      "label_id": "SHLF-001",
+      "product_id": "SKU-001",
+      "event": "rendered",
+      "publication_id": 42,
+      "price": 3.49,
+      "line1": "WHOLE MILK 1GAL",
+      "line2": "$3.49 Inventory",
+      "rendered_at": "2026-10-29T23:04:12Z",
+      "ts": "2026-10-29T23:04:12Z",
+      "firmware": "emulator-1.0",
+      "emulated": true,
+      "rssi": -45,
+      "battery": 100
+    },
+    {
+      "label_id": "SHLF-0108",
+      "product_id": "SKU-002",
+      "price": 4.12,
+      "decision_id": null,
+      "in_sync": true,
+      "rendered_at": "2026-10-29T23:04:12Z",
+      "rssi_dbm": -47,
+      "battery_pct": 70,
+      "firmware": "e213-4",
+      "ts": "2026-10-29T23:04:40Z"
     }
   ]
 }

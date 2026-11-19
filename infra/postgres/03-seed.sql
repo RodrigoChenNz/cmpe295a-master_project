@@ -23,7 +23,7 @@ INSERT INTO store_settings (id, store_name, store_code, store_type, timezone, cu
                             mqtt_host, mqtt_port, mqtt_tls, label_stale_secs,
                             onboarded_at)
 VALUES (TRUE, 'SJSU Market', 'STORE-04', 'grocery', 'America/Los_Angeles', 'USD',
-        'mosquitto', 1883, FALSE, 900, now());
+        'mosquitto', 1883, FALSE, 4500, now());
 
 -- ── People ──────────────────────────────────────────────────────────────────
 -- password_hash '!' is an unusable sentinel: no password can ever verify

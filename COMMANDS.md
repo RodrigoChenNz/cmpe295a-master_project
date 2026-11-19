@@ -8,6 +8,8 @@ Run every command from the repo root. The only thing you need installed is Docke
 |---|---|
 | `make up` | Starts the real system: mosquitto, postgres, dashboard-api and dashboard-web. It uses the real database and has no sample or emulated data. |
 | `make demo` | Starts the same system with sample data and the fake publisher standing in for Layers 1–4. It uses its own separate database. `make up DEMO=1` does the same thing. |
+| `make demo LORA=1` | Starts the system and then the LoRa bridge for the e-ink labels, in one command. `LORA=1` works with `up`, `demo`, `fresh` and `fresh-demo`. The bridge runs in the foreground: Ctrl-C stops only the bridge, and `make down` stops the stack. Needs the gateway plugged in by USB and `uv` installed. |
+| `make lora` | Starts only the LoRa bridge, for when the stack is already running. |
 | `make down` | Stops everything and keeps your data. |
 | `make restart` | Runs `down` then `up`. Use `make restart DEMO=1` for the demo. |
 
