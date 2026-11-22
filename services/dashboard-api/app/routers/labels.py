@@ -354,6 +354,11 @@ async def pair(
     )
     bus.emit("labels", changed=[label_id], action="paired")
 
+    # Tell the LCD nodes which product each LCD label now shows, so the screen
+    # can draw the new product's name. Not a contract topic: see
+    # gate.publish_display_map.
+    await gate.publish_display_map()
+
     # Pushing the current price right after pairing, so a freshly paired label
     # does not sit showing whatever it had in flash.
     if body.product_id:

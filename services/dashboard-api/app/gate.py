@@ -130,6 +130,11 @@ async def publish_price(
             "LCD line 2 holds 16"
         )
 
+    # price_history.decision_id is a UUID column, so a re-sent price arrives
+    # here as a uuid.UUID object. json.dumps cannot encode that, so make it text.
+    if decision_id is not None:
+        decision_id = str(decision_id)
+
     now = datetime.now(timezone.utc)
 
     async with db.pool().acquire() as conn:
@@ -307,6 +312,45 @@ async def publish_label_command(
     )
     if not delivered:
         log.info("label command %s for %s is queued, not published", command, label_id)
+    return delivered
+
+
+DISPLAY_MAP_TOPIC = "retail/config/display_map"
+
+
+async def publish_display_map() -> bool:
+    """Tell the LCD nodes which product each LCD label shows, and its line-1 name.
+
+    **Not a contract topic**, like `publish_label_command` above: `contracts/`
+    has no message that carries a product name, and the price message must not
+    grow one without all four signatures. The ESP32 firmware only listens to
+    this topic when its `config.py` says `DYNAMIC_MAP = True`.
+
+    Retained, so a node that boots later still gets it, and it lists every LCD
+    label so a node can pick out the ones it drives (matched on `label`). The
+    name is the product's display name, upper-cased and cut at 16 characters,
+    the same line 1 that `render_lines` and the console preview use.
+    """
+    rows = await db.fetch(
+        """SELECT l.label_id, l.product_id, p.display_name, p.name
+             FROM shelf_labels l
+             JOIN products p ON p.product_id = l.product_id
+            WHERE l.kind = 'lcd'
+            ORDER BY l.label_id"""
+    )
+    displays = [
+        {
+            "label": r["label_id"],
+            "sku": r["product_id"],
+            "name": (r["display_name"] or r["name"]).upper()[:16],
+        }
+        for r in rows
+    ]
+    delivered = await bus.publish(
+        DISPLAY_MAP_TOPIC, {"displays": displays}, qos=1, retain=True
+    )
+    if not delivered:
+        log.info("display map is queued, not published")
     return delivered
 
 

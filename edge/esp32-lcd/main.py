@@ -7,6 +7,21 @@ shelf is never blank after a power cut or a network outage.
 LCD line 1: SKU + price, right aligned     e.g.  SKU-001   $12.99
 LCD line 2: reason_tag, verbatim (<= 16)   e.g.  Competitor up
 Line 2 reads [cached] until the first live message after a reboot.
+
+One node can drive several LCDs. config.DISPLAYS lists them, one entry per LCD:
+    DISPLAYS = [
+        {"sku": "SKU-001", "sda": 21, "scl": 22},            # LCD 1 on GPIO 21/22
+        {"sku": "SKU-003", "sda": 16, "scl": 17},            # LCD 2 on its own bus
+    ]
+or, with both on the same two wires (second backpack's A0 pad closed):
+    DISPLAYS = [
+        {"sku": "SKU-001", "addr": 0x27},
+        {"sku": "SKU-003", "addr": 0x26},
+    ]
+Keys: sku (required), addr (optional, default: first address found on that
+bus that is not already used), sda (default 21), scl (default 22).
+If config has no DISPLAYS the node behaves as before: SKU-001 on the first
+display it finds.
 """
 import network, time, json, machine, ubinascii, esp32
 from machine import I2C, Pin
@@ -14,10 +29,34 @@ from umqtt.simple import MQTTClient
 from lcd import I2cLcd
 import config
 
-# ---- LCD ----
-i2c = I2C(0, scl=Pin(22), sda=Pin(21), freq=100000)
-lcd1 = I2cLcd(i2c, i2c.scan()[0])
-LCDS = {"SKU-001": lcd1}   # product_id -> display (add the 2nd LCD here later)
+# ---- LCDs ----
+DISPLAYS = getattr(config, "DISPLAYS", None) or [{"sku": "SKU-001"}]
+
+buses = {}    # (sda, scl) -> I2C object; the ESP32 has two hardware buses, 0 and 1
+used = set()  # (sda, scl, addr) already given to a display
+LCDS = {}     # product_id -> display
+first_error = None
+
+for d in DISPLAYS:
+    sku = d["sku"]
+    try:
+        pins = (d.get("sda", 21), d.get("scl", 22))
+        if pins not in buses:
+            buses[pins] = I2C(len(buses), scl=Pin(pins[1]), sda=Pin(pins[0]), freq=100000)
+        bus = buses[pins]
+        addr = d.get("addr")
+        if addr is None:
+            addr = [a for a in bus.scan() if pins + (a,) not in used][0]
+        used.add(pins + (addr,))
+        LCDS[sku] = I2cLcd(bus, addr)
+        print("display for", sku, "at", hex(addr), "on SDA", pins[0], "SCL", pins[1])
+    except Exception as e:
+        print("display for", sku, "not started:", e)
+        if first_error is None:
+            first_error = e
+
+if not LCDS:
+    raise first_error   # nothing to show prices on: stop, as before
 
 # ---- last-known price, kept in flash (NVS) ----
 nvs = esp32.NVS("shelf")
